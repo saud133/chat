@@ -8,7 +8,7 @@ const HomePage = () => {
   const navigate = useNavigate();
   
   const handleChatClick = () => {
-    navigate('/contact');
+    navigate('/chat');
   };
   
   const handleServicesClick = () => {

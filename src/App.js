@@ -5,6 +5,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
 import ContactPage from './pages/ContactPage';
+import ChatPage from './pages/ChatPage';
 import ServicesPage from './pages/ServicesPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
@@ -30,7 +31,7 @@ function App() {
             <Route path="/chat" element={
               <ProtectedRoute>
                 <Layout>
-                  <ContactPage />
+                  <ChatPage />
                 </Layout>
               </ProtectedRoute>
             } />
