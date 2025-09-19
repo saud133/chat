@@ -14,8 +14,8 @@ const translations = {
   en: {
     // Navigation
     home: 'Home',
-    contact: 'Contact',
-    chat: 'Chat',
+    contact: 'Chat',
+    chat: 'Contact Us',
     login: 'Login',
     logout: 'Logout',
     
@@ -91,8 +91,8 @@ const translations = {
   ar: {
     // Navigation
     home: 'الرئيسية',
-    contact: 'اتصل بنا',
-    chat: 'الدردشة',
+    contact: 'الدردشة',
+    chat: 'اتصل بنا',
     login: 'تسجيل الدخول',
     logout: 'تسجيل الخروج',
     

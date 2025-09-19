@@ -34,6 +34,7 @@ const ChatPage = () => {
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+  const sidebarRef = useRef(null);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -107,6 +108,20 @@ const ChatPage = () => {
       loadConversation(conversations[0].id);
     }
   }, []);
+
+  // Close sidebar on mobile when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (window.innerWidth <= 768 && isSidebarOpen && sidebarRef.current && !sidebarRef.current.contains(event.target)) {
+        setIsSidebarOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isSidebarOpen]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -226,7 +241,7 @@ const ChatPage = () => {
   return (
     <div className={`chat-page ${isRTL ? 'rtl' : 'ltr'}`}>
       {/* Sidebar */}
-      <div className={`chat-sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
+      <div ref={sidebarRef} className={`chat-sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
         <div className="sidebar-header">
           <button 
             className="new-chat-btn"
@@ -322,7 +337,12 @@ const ChatPage = () => {
 
         <form className="chat-input-form" onSubmit={handleSendMessage}>
           <div className="input-container">
-            <label htmlFor="file-upload" className="file-upload-btn">+</label>
+            <label htmlFor="file-upload" className="file-upload-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </label>
             <input
               id="file-upload"
               type="file"
@@ -330,28 +350,33 @@ const ChatPage = () => {
               style={{ display: "none" }}
             />
 
-            <textarea
-              ref={textareaRef}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder={t('typeMessage')}
-              className="chat-input"
-              rows="1"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage(e);
-                }
-              }}
-            />
+            <div className="input-wrapper">
+              <textarea
+                ref={textareaRef}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder={t('typeMessage')}
+                className="chat-input"
+                rows="1"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage(e);
+                  }
+                }}
+              />
 
-            <button 
-              type="submit" 
-              className="send-button"
-              disabled={isLoading || (inputValue.trim() === '' && !selectedFile)}
-            >
-              <span className="send-icon">→</span>
-            </button>
+              <button 
+                type="submit" 
+                className="send-button"
+                disabled={isLoading || (inputValue.trim() === '' && !selectedFile)}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m22 2-7 20-4-9-9-4Z"></path>
+                  <path d="M22 2 11 13"></path>
+                </svg>
+              </button>
+            </div>
           </div>
         </form>
       </div>
