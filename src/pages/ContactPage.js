@@ -67,7 +67,7 @@ const ContactPage = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           userId: userId,
-          message: userInput 
+          chatInput: userInput 
         })
       });
 
