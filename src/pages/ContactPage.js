@@ -72,10 +72,15 @@ const ContactPage = () => {
       });
 
       let replyText = "";
+      let replyActions = [];
 
       try {
         const data = await response.json();
         replyText = data.message?.content || data.text || data.reply || JSON.stringify(data);
+
+        if (data.actions) {
+          replyActions = data.actions;
+        }
       } catch {
         replyText = await response.text();
       }
@@ -84,6 +89,7 @@ const ContactPage = () => {
       const botResponse = {
         id: messages.length + 2,
         text: replyText,
+        actions: replyActions,
         isUser: false,
         sender: t('bot'),
         timestamp: new Date()
@@ -103,6 +109,23 @@ const ContactPage = () => {
 
   const handleFileChange = (e) => {
     setSelectedFile(e.target.files[0]);
+  };
+
+  const handleActionClick = async (action) => {
+    if (action.type === "button" && action.action === "send_email_request") {
+      try {
+        const response = await fetch("https://saudg.app.n8n.cloud/webhook/email-request", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId, lastMessage: messages[messages.length - 1].text })
+        });
+
+        const result = await response.json();
+        alert(result.message || "تم إرسال الطلب بنجاح ✅");
+      } catch (err) {
+        alert("حدث خطأ أثناء إرسال الطلب ❌");
+      }
+    }
   };
 
   const formatTime = (date) => {
@@ -130,6 +153,21 @@ const ContactPage = () => {
                 </div>
 
                 {message.text && <div className="message-text">{formatMessageText(message.text)}</div>}
+
+                {/* عرض أزرار الأكشن */}
+                {message.actions && message.actions.length > 0 && (
+                  <div className="message-actions">
+                    {message.actions.map((action, idx) => (
+                      <button
+                        key={idx}
+                        className="action-button"
+                        onClick={() => handleActionClick(action)}
+                      >
+                        {action.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 {/* صورة مرفوعة */}
                 {message.file && message.file.type.startsWith("image/") && (
