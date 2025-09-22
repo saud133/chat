@@ -76,8 +76,12 @@ const ContactPage = () => {
 
       try {
         const data = await response.json();
-        replyText = data.message?.content || data.text || data.reply || JSON.stringify(data);
+        console.log("🔍 API Response:", data); // Debug
 
+        // جلب النص الأساسي من reply (الناتج من n8n)
+        replyText = data.reply || data.text || JSON.stringify(data);
+
+        // جلب الأزرار
         if (data.actions) {
           replyActions = data.actions;
         }
