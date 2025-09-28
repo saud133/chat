@@ -13,8 +13,8 @@ export const formatMessageText = (text) => {
     // 2.1 bold: **النص**
     let boldLine = line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
 
-    // 2.2 روابط clickable
-    const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g;
+    // 2.2 روابط clickable (معدلة لتجنب التقاط JSON أو علامات زيادة)
+    const urlRegex = /(https?:\/\/[^\s\)\]\}",]+)/g;
     let parts = boldLine.split(urlRegex);
 
     return (
@@ -33,8 +33,9 @@ export const formatMessageText = (text) => {
                   textDecoration: "underline",
                   wordBreak: "break-all"
                 }}
-                dangerouslySetInnerHTML={{ __html: part }}
-              />
+              >
+                {part}
+              </a>
             );
           } else {
             return (
