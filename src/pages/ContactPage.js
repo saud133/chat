@@ -40,6 +40,7 @@ const ContactPage = () => {
     scrollToBottom();
   }, [messages]);
 
+  // ✅ النسخة المعدلة من handleSendMessage
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (inputValue.trim() === '' && !selectedFile) return;
@@ -75,17 +76,22 @@ const ContactPage = () => {
       let replyActions = [];
 
       try {
+        // ✅ جرب أولاً قراءة الرد كـ JSON
         const data = await response.json();
-        console.log("🔍 API Response:", data); // Debug
+        console.log("🔍 API Response:", data);
 
-        // جلب النص الأساسي من reply (الناتج من n8n)
-        replyText = data.reply || data.text || JSON.stringify(data);
+        replyText = data.reply 
+                 || data.text 
+                 || data.final_markdown 
+                 || JSON.stringify(data);
 
-        // جلب الأزرار
         if (data.actions) {
           replyActions = data.actions;
         }
-      } catch {
+      } catch (err) {
+        console.warn("⚠️ JSON parse failed, fallback to text:", err);
+
+        // ✅ fallback: لو الرد مو JSON صالح → اقرأه كنص
         replyText = await response.text();
       }
 
@@ -99,10 +105,13 @@ const ContactPage = () => {
         timestamp: new Date()
       };
       setMessages(prev => [...prev, botResponse]);
+
     } catch (error) {
+      console.error("❌ Fetch error:", error);
+
       const errorMessage = {
         id: messages.length + 2,
-        text: t('errorMessage'),
+        text: t('errorMessage') || "حدث خطأ أثناء الاتصال بالسيرفر ❌",
         isUser: false,
         sender: t('bot'),
         timestamp: new Date()
