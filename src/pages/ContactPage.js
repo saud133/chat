@@ -147,8 +147,59 @@ const ContactPage = () => {
 
   return (
     <div className={`contact-page ${isRTL ? 'rtl' : 'ltr'}`}>
-      <div className="chat-container">
+      {/* Sidebar */}
+      <div ref={sidebarRef} className={`chat-sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
+        <div className="sidebar-header">
+          <button 
+            className="new-chat-btn"
+            onClick={createNewConversation}
+          >
+            <span className="plus-icon">+</span>
+            New Chat
+          </button>
+          <button 
+            className="sidebar-toggle"
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          >
+            <span className="arrow-icon">{isSidebarOpen ? '←' : '→'}</span>
+          </button>
+        </div>
+        
+        <div className="conversations-list">
+          {conversations.map((conversation) => (
+            <div
+              key={conversation.id}
+              className={`conversation-item ${currentConversationId === conversation.id ? 'active' : ''}`}
+              onClick={() => loadConversation(conversation.id)}
+            >
+              <div className="conversation-content">
+                <div className="conversation-title">{conversation.title}</div>
+                <div className="conversation-date">{formatDate(conversation.createdAt)}</div>
+              </div>
+              <button
+                className="delete-conversation-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteConversation(conversation.id);
+                }}
+                title="Delete conversation"
+              >
+                🗑️
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Chat Area */}
+      <div className={`chat-main ${isSidebarOpen ? 'with-sidebar' : 'full-width'}`}>
         <div className="chat-header">
+          <button 
+            className="mobile-sidebar-toggle"
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          >
+            ☰
+          </button>
           <h2>{t('contactSupport')}</h2>
           <p>{t('contactSubtitle')}</p>
         </div>
@@ -200,6 +251,17 @@ const ContactPage = () => {
               </div>
             </div>
           ))}
+          {isLoading && (
+            <div className="message bot-message">
+              <div className="message-content">
+                <div className="typing-indicator">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
 
@@ -222,7 +284,7 @@ const ContactPage = () => {
               className="chat-input"
             />
 
-            <button type="submit" className="send-button">
+            <button type="submit" className="send-button" disabled={isLoading || (inputValue.trim() === '' && !selectedFile)}>
               {t('send')}
             </button>
           </div>
