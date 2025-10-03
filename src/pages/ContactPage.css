@@ -13,9 +13,9 @@
   border-right: 1px solid #2d2d2d;
   display: flex;
   flex-direction: column;
-  transition: all 0.3s ease;
   position: relative;
   z-index: 1000;
+  transition: transform 0.3s ease, width 0.3s ease;
 }
 
 .chat-sidebar.closed {
@@ -464,7 +464,7 @@
   text-align: left;
 }
 
-/* تنسيق القوائم */
+/* Lists in messages */
 .message-text ul,
 .message-text ol {
   margin: 6px 0 6px 20px;
@@ -475,7 +475,6 @@
   margin-bottom: 4px;
 }
 
-/* إبراز النص الغامق */
 .message-text strong {
   font-weight: 600;
 }
@@ -485,29 +484,23 @@
   .chat-sidebar {
     width: 260px;
   }
-  
   .chat-header {
     padding: 1rem;
   }
-  
   .chat-header h2 {
     font-size: 1.125rem;
   }
-  
   .chat-messages {
     padding: 0.75rem;
   }
-  
   .message-content {
     max-width: 85%;
     padding: 0.6rem 0.8rem;
     border-radius: 16px;
   }
-  
   .message-text {
     font-size: 0.9rem;
   }
-  
   .chat-input-form {
     padding: 1rem;
   }
@@ -517,7 +510,6 @@
   .mobile-sidebar-toggle {
     display: block;
   }
-  
   .chat-sidebar {
     position: fixed;
     top: 0;
@@ -526,39 +518,31 @@
     z-index: 1000;
     transform: translateX(-100%);
   }
-  
   .chat-sidebar.open {
     transform: translateX(0);
+    box-shadow: 2px 0 10px rgba(0,0,0,0.4); /* ✅ تحسين جديد */
   }
-  
   .chat-main {
     width: 100%;
   }
-  
   .chat-header {
     padding: 1rem 1.25rem;
   }
-  
   .chat-messages {
     padding: 1rem 1.25rem;
   }
-  
   .message-content {
     max-width: 75%;
   }
-  
   .chat-input-form {
     padding: 1rem 1.25rem;
   }
-  
   .input-container {
     padding: 0.4rem;
   }
-  
   .chat-input {
     font-size: 0.9rem;
   }
-  
   .send-button {
     padding: 0.6rem 1.2rem;
     font-size: 0.85rem;
@@ -569,47 +553,37 @@
   .chat-header {
     padding: 0.75rem 1rem;
   }
-  
   .chat-header h2 {
     font-size: 1rem;
   }
-  
   .chat-header p {
     font-size: 0.8rem;
   }
-  
   .chat-messages {
     padding: 0.5rem;
   }
-  
   .message-content {
     max-width: 80%;
     padding: 0.5rem 0.75rem;
   }
-  
   .message-text {
     font-size: 0.85rem;
   }
-  
   .chat-input-form {
     padding: 0.75rem 1rem;
   }
-  
   .input-container {
     gap: 0.5rem;
   }
-  
   .file-upload-btn {
     min-width: 36px;
     height: 36px;
     font-size: 1rem;
   }
-  
   .chat-input {
     font-size: 0.85rem;
     padding: 0.6rem;
   }
-  
   .send-button {
     padding: 0.5rem 1rem;
     font-size: 0.8rem;
@@ -622,7 +596,6 @@
   .message-content {
     border-width: 0.5px;
   }
-  
   .input-container {
     border-width: 0.5px;
   }
@@ -633,43 +606,34 @@
   .chat-main {
     background: #1a1a1a;
   }
-  
   .chat-header {
     background: #2d2d2d;
     border-bottom-color: #404040;
   }
-  
   .chat-header h2 {
     color: #ececf1;
   }
-  
   .chat-header p {
     color: #9ca3af;
   }
-  
   .chat-messages {
     background: #1a1a1a;
   }
-  
   .bot-message .message-content {
     background-color: #2d2d2d;
     color: #ececf1;
   }
-  
   .chat-input-form {
     background: #2d2d2d;
     border-top-color: #404040;
   }
-  
   .input-container {
     background: #404040;
     border-color: #4d4d4f;
   }
-  
   .chat-input {
     color: #ececf1;
   }
-  
   .chat-input::placeholder {
     color: #9ca3af;
   }

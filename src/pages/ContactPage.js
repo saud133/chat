@@ -5,7 +5,49 @@ import { formatMessageText } from '../utils/textUtils';
 
 const ContactPage = () => {
   const { t, isRTL } = useLanguage();
-  
+
+  // ✅ Sidebar states
+  const sidebarRef = useRef(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // ✅ Conversations states
+  const [conversations, setConversations] = useState([]);
+  const [currentConversationId, setCurrentConversationId] = useState(null);
+
+  // ✅ Loading state
+  const [isLoading, setIsLoading] = useState(false);
+
+  // ✅ Create new conversation
+  const createNewConversation = () => {
+    const newConv = {
+      id: Date.now(),
+      title: `Conversation ${conversations.length + 1}`,
+      createdAt: new Date().toISOString()
+    };
+    setConversations([...conversations, newConv]);
+    setCurrentConversationId(newConv.id);
+  };
+
+  // ✅ Load a conversation
+  const loadConversation = (id) => {
+    setCurrentConversationId(id);
+    // TODO: fetch conversation messages from backend or localStorage
+  };
+
+  // ✅ Delete a conversation
+  const deleteConversation = (id) => {
+    setConversations(conversations.filter((c) => c.id !== id));
+    if (currentConversationId === id) {
+      setCurrentConversationId(null);
+    }
+  };
+
+  // ✅ Format date helper
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+  };
+
   // توليد أو جلب userId من localStorage
   const getUserId = () => {
     let uid = localStorage.getItem("chatUserId");
@@ -45,6 +87,8 @@ const ContactPage = () => {
     e.preventDefault();
     if (inputValue.trim() === '' && !selectedFile) return;
 
+    setIsLoading(true);
+
     // رسالة المستخدم
     const newMessage = {
       id: messages.length + 1,
@@ -76,7 +120,6 @@ const ContactPage = () => {
       let replyActions = [];
 
       try {
-        // ✅ جرب أولاً قراءة الرد كـ JSON
         const data = await response.json();
         console.log("🔍 API Response:", data);
 
@@ -90,8 +133,6 @@ const ContactPage = () => {
         }
       } catch (err) {
         console.warn("⚠️ JSON parse failed, fallback to text:", err);
-
-        // ✅ fallback: لو الرد مو JSON صالح → اقرأه كنص
         replyText = await response.text();
       }
 
@@ -118,6 +159,8 @@ const ContactPage = () => {
       };
       setMessages(prev => [...prev, errorMessage]);
     }
+
+    setIsLoading(false);
   };
 
   const handleFileChange = (e) => {
