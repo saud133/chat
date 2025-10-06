@@ -18,6 +18,20 @@ const ChatPage = () => {
 
   const userId = getUserId();
 
+  // Generate unique SessionID
+  const generateSessionId = () => {
+    return "session-" + Math.random().toString(36).substr(2, 9) + "-" + Date.now();
+  };
+
+  // Generate unique file identifiers
+  const generateFileId = () => {
+    return "file-" + Math.random().toString(36).substr(2, 9) + "-" + Date.now();
+  };
+
+  const generateImageId = () => {
+    return "image-" + Math.random().toString(36).substr(2, 9) + "-" + Date.now();
+  };
+
   // State for conversations
   const [conversations, setConversations] = useState(() => {
     const saved = localStorage.getItem('chatConversations');
@@ -26,6 +40,7 @@ const ChatPage = () => {
 
   // State for current conversation
   const [currentConversationId, setCurrentConversationId] = useState(null);
+  const [sessionId, setSessionId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
@@ -40,7 +55,9 @@ const ChatPage = () => {
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+      const scrollHeight = textareaRef.current.scrollHeight;
+      const maxHeight = 120; // max-height from CSS
+      textareaRef.current.style.height = Math.min(scrollHeight, maxHeight) + 'px';
     }
   }, [inputValue]);
 
@@ -49,14 +66,17 @@ const ChatPage = () => {
     const conversation = conversations.find(conv => conv.id === conversationId);
     if (conversation) {
       setCurrentConversationId(conversationId);
+      setSessionId(conversation.sessionId || generateSessionId());
       setMessages(conversation.messages);
     }
   };
 
   // Create new conversation
   const createNewConversation = () => {
+    const newSessionId = generateSessionId();
     const newConversation = {
       id: Date.now().toString(),
+      sessionId: newSessionId,
       title: 'New Chat',
       messages: [{
         id: 1,
@@ -73,6 +93,7 @@ const ChatPage = () => {
     localStorage.setItem('chatConversations', JSON.stringify(updatedConversations));
     
     setCurrentConversationId(newConversation.id);
+    setSessionId(newSessionId);
     setMessages(newConversation.messages);
   };
 
@@ -108,6 +129,13 @@ const ChatPage = () => {
       loadConversation(conversations[0].id);
     }
   }, []);
+
+  // Initialize sessionId for existing conversations without sessionId
+  useEffect(() => {
+    if (currentConversationId && !sessionId) {
+      setSessionId(generateSessionId());
+    }
+  }, [currentConversationId, sessionId]);
 
   // Close sidebar on mobile when clicking outside
   useEffect(() => {
@@ -161,14 +189,31 @@ const ChatPage = () => {
     const userInput = inputValue;
 
     try {
-      // Send message to n8n with userId
+      // Prepare webhook payload with SessionID and file information
+      const webhookPayload = {
+        userId: userId,
+        sessionId: sessionId,
+        message: userInput
+      };
+
+      // Add file information if a file is selected
+      if (selectedFile) {
+        if (selectedFile.type.startsWith("image/")) {
+          webhookPayload.imageId = selectedFile.fileId;
+          webhookPayload.imageName = selectedFile.name;
+          webhookPayload.imageType = selectedFile.type;
+        } else {
+          webhookPayload.fileId = selectedFile.fileId;
+          webhookPayload.fileName = selectedFile.name;
+          webhookPayload.fileType = selectedFile.type;
+        }
+      }
+
+      // Send message to n8n with userId, sessionId, and file info
       const response = await fetch("https://saudg.app.n8n.cloud/webhook/chat-webhook", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          userId: userId,
-          message: userInput 
-        })
+        body: JSON.stringify(webhookPayload)
       });
 
       let replyText = "";
@@ -217,7 +262,14 @@ const ChatPage = () => {
   };
 
   const handleFileChange = (e) => {
-    setSelectedFile(e.target.files[0]);
+    const file = e.target.files[0];
+    if (file) {
+      const fileWithId = {
+        ...file,
+        fileId: file.type.startsWith("image/") ? generateImageId() : generateFileId()
+      };
+      setSelectedFile(fileWithId);
+    }
   };
 
   const formatTime = (date) => {
@@ -363,6 +415,7 @@ const ChatPage = () => {
                     e.preventDefault();
                     handleSendMessage(e);
                   }
+                  // Allow Shift+Enter for new lines (default behavior)
                 }}
               />
 
