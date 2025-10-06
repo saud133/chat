@@ -215,6 +215,11 @@ const ChatPage = () => {
         formData.append("data", blob, file.fileName);
       });
 
+      for (let pair of formData.entries()) {
+        console.log('🟢 FormData Entry:', pair[0], pair[1]);
+      }
+      
+
       const response = await fetch('https://saudg.app.n8n.cloud/webhook/chat-webhook', {
         method: 'POST',
         body: formData,
