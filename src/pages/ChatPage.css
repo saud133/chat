@@ -263,37 +263,13 @@
   display: block;
 }
 
-.file-container {
-  margin-top: 0.5rem;
-}
-
 .file-message {
+  margin-top: 0.5rem;
   font-size: 0.85rem;
   color: inherit;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.25rem;
-}
-
-.file-id-tag {
-  font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.7);
-  background: rgba(0, 0, 0, 0.2);
-  padding: 0.2rem 0.4rem;
-  border-radius: 4px;
-  font-family: monospace;
-  margin-top: 0.25rem;
-  display: inline-block;
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.bot-message .file-id-tag {
-  color: rgba(0, 0, 0, 0.6);
-  background: rgba(0, 0, 0, 0.1);
 }
 
 .typing-indicator {
@@ -387,9 +363,6 @@
   font-family: inherit;
   line-height: 1.5;
   background: transparent;
-  overflow-y: auto;
-  word-wrap: break-word;
-  white-space: pre-wrap;
 }
 
 .chat-input::placeholder {
@@ -612,7 +585,6 @@
     padding: 0.4rem 0.6rem;
     font-size: 0.85rem;
     min-height: 20px;
-    max-height: 100px;
   }
 
   .send-button {

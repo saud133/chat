@@ -18,26 +18,6 @@ const ChatPage = () => {
 
   const userId = getUserId();
 
-  // Generate unique SessionID
-  const generateSessionId = () => {
-    return "session-" + Math.random().toString(36).substr(2, 9) + "-" + Date.now();
-  };
-
-  // Generate unique file identifiers using UUID-like format
-  const generateFileId = () => {
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substr(2, 9);
-    const random2 = Math.random().toString(36).substr(2, 9);
-    return `file-${random}-${random2}-${timestamp}`;
-  };
-
-  const generateImageId = () => {
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substr(2, 9);
-    const random2 = Math.random().toString(36).substr(2, 9);
-    return `image-${random}-${random2}-${timestamp}`;
-  };
-
   // State for conversations
   const [conversations, setConversations] = useState(() => {
     const saved = localStorage.getItem('chatConversations');
@@ -46,7 +26,6 @@ const ChatPage = () => {
 
   // State for current conversation
   const [currentConversationId, setCurrentConversationId] = useState(null);
-  const [sessionId, setSessionId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
@@ -61,9 +40,7 @@ const ChatPage = () => {
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      const scrollHeight = textareaRef.current.scrollHeight;
-      const maxHeight = 120; // max-height from CSS
-      textareaRef.current.style.height = Math.min(scrollHeight, maxHeight) + 'px';
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
     }
   }, [inputValue]);
 
@@ -72,17 +49,14 @@ const ChatPage = () => {
     const conversation = conversations.find(conv => conv.id === conversationId);
     if (conversation) {
       setCurrentConversationId(conversationId);
-      setSessionId(conversation.sessionId || generateSessionId());
       setMessages(conversation.messages);
     }
   };
 
   // Create new conversation
   const createNewConversation = () => {
-    const newSessionId = generateSessionId();
     const newConversation = {
       id: Date.now().toString(),
-      sessionId: newSessionId,
       title: 'New Chat',
       messages: [{
         id: 1,
@@ -99,7 +73,6 @@ const ChatPage = () => {
     localStorage.setItem('chatConversations', JSON.stringify(updatedConversations));
     
     setCurrentConversationId(newConversation.id);
-    setSessionId(newSessionId);
     setMessages(newConversation.messages);
   };
 
@@ -135,13 +108,6 @@ const ChatPage = () => {
       loadConversation(conversations[0].id);
     }
   }, []);
-
-  // Initialize sessionId for existing conversations without sessionId
-  useEffect(() => {
-    if (currentConversationId && !sessionId) {
-      setSessionId(generateSessionId());
-    }
-  }, [currentConversationId, sessionId]);
 
   // Close sidebar on mobile when clicking outside
   useEffect(() => {
@@ -195,29 +161,14 @@ const ChatPage = () => {
     const userInput = inputValue;
 
     try {
-      // Prepare webhook payload with SessionID and file information
-      const webhookPayload = {
-        userId: userId,
-        sessionId: sessionId,
-        message: userInput || "", // Ensure message is never undefined
-        timestamp: new Date().toISOString()
-      };
-
-      // Add file information if a file is selected
-      if (selectedFile) {
-        webhookPayload.fileId = selectedFile.fileId;
-        webhookPayload.fileType = selectedFile.fileType;
-        webhookPayload.fileName = selectedFile.fileName;
-        webhookPayload.fileUrl = selectedFile.fileUrl;
-        webhookPayload.fileTimestamp = selectedFile.timestamp;
-        webhookPayload.fileSize = selectedFile.fileSize;
-      }
-
-      // Send message to n8n with userId, sessionId, and file info
+      // Send message to n8n with userId
       const response = await fetch("https://saudg.app.n8n.cloud/webhook/chat-webhook", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(webhookPayload)
+        body: JSON.stringify({ 
+          userId: userId,
+          message: userInput 
+        })
       });
 
       let replyText = "";
@@ -266,39 +217,7 @@ const ChatPage = () => {
   };
 
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Check file size (limit to 10MB for base64 conversion)
-      const maxSize = 10 * 1024 * 1024; // 10MB
-      if (file.size > maxSize) {
-        alert('File size too large. Please select a file smaller than 10MB.');
-        e.target.value = ''; // Clear the input
-        return;
-      }
-
-      const fileId = file.type.startsWith("image/") ? generateImageId() : generateFileId();
-      const fileType = file.type.startsWith("image/") ? "image" : "document";
-      
-      // Convert file to base64 for fileUrl
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const fileWithMetadata = {
-          ...file,
-          fileId: fileId,
-          fileType: fileType,
-          fileName: file.name,
-          fileUrl: event.target.result, // base64 data URL
-          timestamp: new Date().toISOString(),
-          fileSize: file.size
-        };
-        setSelectedFile(fileWithMetadata);
-      };
-      reader.onerror = () => {
-        alert('Error reading file. Please try again.');
-        e.target.value = ''; // Clear the input
-      };
-      reader.readAsDataURL(file);
-    }
+    setSelectedFile(e.target.files[0]);
   };
 
   const formatTime = (date) => {
@@ -387,29 +306,15 @@ const ChatPage = () => {
                 {message.text && <div className="message-text">{formatMessageText(message.text)}</div>}
 
                 {message.file && message.file.type.startsWith("image/") && (
-                  <div className="file-container">
-                    <img
-                      src={URL.createObjectURL(message.file)}
-                      alt="uploaded"
-                      className="chat-image"
-                    />
-                    {message.file.fileId && (
-                      <div className="file-id-tag" title="Image ID">
-                        ID: {message.file.fileId}
-                      </div>
-                    )}
-                  </div>
+                  <img
+                    src={URL.createObjectURL(message.file)}
+                    alt="uploaded"
+                    className="chat-image"
+                  />
                 )}
 
                 {message.file && !message.file.type.startsWith("image/") && (
-                  <div className="file-container">
-                    <div className="file-message">📎 {message.file.name}</div>
-                    {message.file.fileId && (
-                      <div className="file-id-tag" title="File ID">
-                        ID: {message.file.fileId}
-                      </div>
-                    )}
-                  </div>
+                  <div className="file-message">📎 {message.file.name}</div>
                 )}
 
                 <div className="message-time">{formatTime(message.timestamp)}</div>
@@ -458,7 +363,6 @@ const ChatPage = () => {
                     e.preventDefault();
                     handleSendMessage(e);
                   }
-                  // Allow Shift+Enter for new lines (default behavior)
                 }}
               />
 
