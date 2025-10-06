@@ -31,7 +31,7 @@ const ContactPage = () => {
     localStorage.setItem("conversations", JSON.stringify(conversations));
   }, [conversations]);
 
-  // ✅ Create new conversation manually
+  // ✅ Create new conversation
   const createNewConversation = () => {
     const newConv = {
       id: Date.now(),
@@ -44,14 +44,14 @@ const ContactPage = () => {
     setMessages([]);
   };
 
-  // ✅ Load a conversation
+  // ✅ Load conversation
   const loadConversation = (id) => {
     setCurrentConversationId(id);
     const conv = conversations.find(c => c.id === id);
     setMessages(conv ? conv.messages : []);
   };
 
-  // ✅ Delete a conversation
+  // ✅ Delete conversation
   const deleteConversation = (id) => {
     const updated = conversations.filter((c) => c.id !== id);
     setConversations(updated);
@@ -90,7 +90,12 @@ const ContactPage = () => {
     scrollToBottom();
   }, [messages]);
 
-  // ✅ Send message
+  // ✅ Handle file selection
+  const handleFileChange = (e) => {
+    setSelectedFile(e.target.files[0]);
+  };
+
+  // ✅ Send message (supports file upload)
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (inputValue.trim() === '' && !selectedFile) return;
@@ -98,9 +103,9 @@ const ContactPage = () => {
 
     let convId = currentConversationId;
 
-    // 1️⃣ إذا ما فيه محادثة → ننشئ واحدة جديدة بالعنوان من أول رسالة
+    // 1️⃣ Create new conversation if needed
     if (!convId) {
-      const title = inputValue.trim().slice(0, 30); // أول 30 حرف من السؤال
+      const title = inputValue.trim().slice(0, 30);
       const newConv = {
         id: Date.now(),
         title: title || "New Chat",
@@ -113,7 +118,7 @@ const ContactPage = () => {
       setMessages([]);
     }
 
-    // 2️⃣ الرسالة الجديدة (المستخدم)
+    // 2️⃣ Create user message
     const newMessage = {
       id: Date.now(),
       text: inputValue,
@@ -127,14 +132,14 @@ const ContactPage = () => {
     setInputValue('');
     setSelectedFile(null);
 
-    // 3️⃣ تحديث المحادثة
+    // 3️⃣ Update conversation
     setConversations(prev =>
       prev.map(c => {
         if (c.id === convId) {
           const updatedMessages = [...c.messages, newMessage];
           return {
             ...c,
-            title: c.messages.length === 0 ? inputValue.trim().slice(0, 30) : c.title, // 👈 العنوان = أول رسالة
+            title: c.messages.length === 0 ? inputValue.trim().slice(0, 30) : c.title,
             messages: updatedMessages
           };
         }
@@ -142,22 +147,33 @@ const ContactPage = () => {
       })
     );
 
-    const userInput = inputValue;
+    // ✅ Prepare formData for n8n
+    const formData = new FormData();
+    formData.append('userId', userId);
+    formData.append('message', inputValue);
+
+    if (selectedFile) {
+      const fileId = selectedFile.type.startsWith("image/")
+        ? `ImageId_${Date.now()}`
+        : `FileId_${Date.now()}`;
+      formData.append(fileId, selectedFile, selectedFile.name);
+    }
+
+    // 🔍 Debug what is sent
+    for (let [key, value] of formData.entries()) {
+      console.log('🟢 FormData Entry:', key, value);
+    }
 
     try {
       const response = await fetch("https://saudg.app.n8n.cloud/webhook/chat-webhook", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, message: userInput })
+        body: formData, // ✅ no headers
       });
 
       let replyText = "";
-      let replyActions = [];
-
       try {
         const data = await response.json();
         replyText = data.reply || data.text || data.final_markdown || JSON.stringify(data);
-        if (data.actions) replyActions = data.actions;
       } catch {
         replyText = await response.text();
       }
@@ -165,7 +181,6 @@ const ContactPage = () => {
       const botResponse = {
         id: Date.now(),
         text: replyText,
-        actions: replyActions,
         isUser: false,
         sender: t('bot'),
         timestamp: new Date()
@@ -182,7 +197,7 @@ const ContactPage = () => {
       console.error("❌ Fetch error:", error);
       const errorMessage = {
         id: Date.now(),
-        text: t('errorMessage') || "حدث خطأ أثناء الاتصال بالسيرفر ❌",
+        text: "❌ حدث خطأ أثناء الاتصال بالخادم",
         isUser: false,
         sender: t('bot'),
         timestamp: new Date()
@@ -193,29 +208,8 @@ const ContactPage = () => {
     setIsLoading(false);
   };
 
-  const handleFileChange = (e) => {
-    setSelectedFile(e.target.files[0]);
-  };
-
-  const handleActionClick = async (action) => {
-    if (action.type === "button" && action.action === "send_email_request") {
-      try {
-        const response = await fetch("https://saudg.app.n8n.cloud/webhook/email-request", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId, lastMessage: messages[messages.length - 1].text })
-        });
-        const result = await response.json();
-        alert(result.message || "تم إرسال الطلب بنجاح ✅");
-      } catch {
-        alert("حدث خطأ أثناء إرسال الطلب ❌");
-      }
-    }
-  };
-
-  const formatTime = (date) => {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
+  const formatTime = (date) =>
+    date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   return (
     <div className={`contact-page ${isRTL ? 'rtl' : 'ltr'}`}>
@@ -257,33 +251,20 @@ const ContactPage = () => {
         </div>
       </div>
 
-      {/* Main Chat Area */}
+      {/* Main Chat */}
       <div className={`chat-main ${isSidebarOpen ? 'with-sidebar' : 'full-width'}`}>
         <div className="chat-header">
           <button className="mobile-sidebar-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
             ☰
           </button>
           <h2>{t('contactSupport')}</h2>
-          <p>{t('contactSubtitle')}</p>
         </div>
 
         <div className="chat-messages">
           {messages.map((message) => (
             <div key={message.id} className={`message ${message.isUser ? 'user-message' : 'bot-message'}`}>
               <div className="message-content">
-                <div className="message-sender">
-                  {message.isUser ? `${t('you')} (${message.sender})` : message.sender}
-                </div>
                 {message.text && <div className="message-text">{formatMessageText(message.text)}</div>}
-                {message.actions && message.actions.length > 0 && (
-                  <div className="message-actions">
-                    {message.actions.map((action, idx) => (
-                      <button key={idx} className="action-button" onClick={() => handleActionClick(action)}>
-                        {action.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
                 {message.file && message.file.type.startsWith("image/") && (
                   <img src={URL.createObjectURL(message.file)} alt="uploaded" className="chat-image" />
                 )}
@@ -298,9 +279,7 @@ const ContactPage = () => {
             <div className="message bot-message">
               <div className="message-content">
                 <div className="typing-indicator">
-                  <span></span>
-                  <span></span>
-                  <span></span>
+                  <span></span><span></span><span></span>
                 </div>
               </div>
             </div>
@@ -308,7 +287,18 @@ const ContactPage = () => {
           <div ref={messagesEndRef} />
         </div>
 
+        {/* Input */}
         <form className="chat-input-form" onSubmit={handleSendMessage}>
+          {selectedFile && (
+            <div className="file-preview">
+              {selectedFile.type.startsWith("image/") ? (
+                <img src={URL.createObjectURL(selectedFile)} alt="preview" className="preview-image" />
+              ) : (
+                <div className="preview-file">📎 {selectedFile.name}</div>
+              )}
+              <button type="button" className="remove-file" onClick={() => setSelectedFile(null)}>✕</button>
+            </div>
+          )}
           <div className="input-container">
             <label htmlFor="file-upload" className="file-upload-btn">+</label>
             <input id="file-upload" type="file" onChange={handleFileChange} style={{ display: "none" }} />
