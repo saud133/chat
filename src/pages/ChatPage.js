@@ -28,13 +28,12 @@ const ChatPage = () => {
     return newId;
   });
 
-  // State for conversations
+  // Conversations
   const [conversations, setConversations] = useState(() => {
     const saved = localStorage.getItem('chatConversations');
     return saved ? JSON.parse(saved) : [];
   });
 
-  // State for current conversation
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState('');
@@ -54,7 +53,7 @@ const ChatPage = () => {
     }
   }, [message]);
 
-  // Load conversation from localStorage
+  // Load conversation
   const loadConversation = (conversationId) => {
     const conversation = conversations.find(conv => conv.id === conversationId);
     if (conversation) {
@@ -105,7 +104,7 @@ const ChatPage = () => {
     }
   };
 
-  // Update conversation title
+  // Update title
   const updateConversationTitle = (conversationId, title) => {
     const updatedConversations = conversations.map(conv => 
       conv.id === conversationId ? { ...conv, title } : conv
@@ -114,7 +113,6 @@ const ChatPage = () => {
     localStorage.setItem('chatConversations', JSON.stringify(updatedConversations));
   };
 
-  // Initialize with first conversation or create new one
   useEffect(() => {
     if (conversations.length === 0) {
       createNewConversation();
@@ -123,24 +121,20 @@ const ChatPage = () => {
     }
   }, []);
 
-  // Close sidebar on mobile when clicking outside
+  // Sidebar auto-close on mobile
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (window.innerWidth <= 768 && isSidebarOpen && sidebarRef.current && !sidebarRef.current.contains(event.target)) {
         setIsSidebarOpen(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isSidebarOpen]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
-
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
@@ -152,48 +146,45 @@ const ChatPage = () => {
     }
   };
 
+  // === File Upload (ChatGPT-style preview) ===
   const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
 
-    // Check file size (limit to 10MB for base64 conversion)
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    if (file.size > maxSize) {
-      alert('File size too large. Please select a file smaller than 10MB.');
-      e.target.value = ''; // Clear the input
-      return;
-    }
+    const maxSize = 10 * 1024 * 1024;
+    const newFiles = [];
 
-    const reader = new FileReader();
-    const isImage = file.type.startsWith('image/');
-    const fileId = isImage ? `ImageId_${uuidv4()}` : `FileId_${uuidv4()}`;
+    files.forEach((file) => {
+      if (file.size > maxSize) {
+        alert(`${file.name} is too large. Please select a file smaller than 10MB.`);
+        return;
+      }
 
-    reader.onloadend = () => {
-      setUploadedFiles([
-        ...uploadedFiles,
-        {
+      const reader = new FileReader();
+      const isImage = file.type.startsWith('image/');
+      const fileId = isImage ? `ImageId_${uuidv4()}` : `FileId_${uuidv4()}`;
+
+      reader.onloadend = () => {
+        newFiles.push({
           fileId,
           fileName: file.name,
           fileType: isImage ? 'image' : 'document',
-          fileData: reader.result, // base64
-        },
-      ]);
-    };
+          fileData: reader.result,
+        });
+        if (newFiles.length === files.length) {
+          setUploadedFiles((prev) => [...prev, ...newFiles]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
 
-    reader.onerror = () => {
-      alert('Error reading file. Please try again.');
-      e.target.value = ''; // Clear the input
-    };
-
-    reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   const handleSend = async () => {
     if (!message && uploadedFiles.length === 0) return;
-
     setIsLoading(true);
 
-    // User message
     const newMessage = {
       id: messages.length + 1,
       text: message,
@@ -208,7 +199,6 @@ const ChatPage = () => {
     setMessage('');
     setUploadedFiles([]);
 
-    // Update conversation title if it's the first user message
     if (messages.length === 1) {
       const title = message.length > 30 ? message.substring(0, 30) + '...' : message;
       updateConversationTitle(currentConversationId, title);
@@ -216,8 +206,8 @@ const ChatPage = () => {
 
     try {
       const payload = {
-        userId: userId,
-        sessionId: sessionId,
+        userId,
+        sessionId,
         message: message || "",
         attachments: uploadedFiles,
       };
@@ -229,7 +219,6 @@ const ChatPage = () => {
       });
 
       let replyText = "";
-
       try {
         const data = await response.json();
         replyText = data.message?.content || data.text || data.reply || JSON.stringify(data);
@@ -237,7 +226,6 @@ const ChatPage = () => {
         replyText = await response.text();
       }
 
-      // Bot response
       const botResponse = {
         id: messages.length + 2,
         text: replyText,
@@ -249,7 +237,6 @@ const ChatPage = () => {
       const finalMessages = [...updatedMessages, botResponse];
       setMessages(finalMessages);
 
-      // Update conversation in localStorage
       const updatedConversations = conversations.map(conv => 
         conv.id === currentConversationId 
           ? { ...conv, messages: finalMessages }
@@ -266,8 +253,7 @@ const ChatPage = () => {
         sender: t('bot'),
         timestamp: new Date()
       };
-      const finalMessages = [...updatedMessages, errorMessage];
-      setMessages(finalMessages);
+      setMessages([...messages, errorMessage]);
     } finally {
       setIsLoading(false);
     }
@@ -281,14 +267,9 @@ const ChatPage = () => {
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    
-    if (date.toDateString() === today.toDateString()) {
-      return 'Today';
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'Yesterday';
-    } else {
-      return date.toLocaleDateString();
-    }
+    if (date.toDateString() === today.toDateString()) return 'Today';
+    if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    return date.toLocaleDateString();
   };
 
   return (
@@ -296,21 +277,15 @@ const ChatPage = () => {
       {/* Sidebar */}
       <div ref={sidebarRef} className={`chat-sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
         <div className="sidebar-header">
-          <button 
-            className="new-chat-btn"
-            onClick={createNewConversation}
-          >
+          <button className="new-chat-btn" onClick={createNewConversation}>
             <span className="plus-icon">+</span>
             New Chat
           </button>
-          <button 
-            className="sidebar-toggle"
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          >
+          <button className="sidebar-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
             <span className="arrow-icon">{isSidebarOpen ? '←' : '→'}</span>
           </button>
         </div>
-        
+
         <div className="conversations-list">
           {conversations.map((conversation) => (
             <div
@@ -340,39 +315,27 @@ const ChatPage = () => {
       {/* Main Chat Area */}
       <div className={`chat-main ${isSidebarOpen ? 'with-sidebar' : 'full-width'}`}>
         <div className="chat-header">
-          <button 
-            className="mobile-sidebar-toggle"
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          >
+          <button className="mobile-sidebar-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
             ☰
           </button>
           <h2>{t('contactSupport')}</h2>
         </div>
-        
+
         <div className="chat-messages">
           {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`message ${message.isUser ? 'user-message' : 'bot-message'}`}
-            >
+            <div key={message.id} className={`message ${message.isUser ? 'user-message' : 'bot-message'}`}>
               <div className="message-content">
                 {message.text && <div className="message-text">{formatMessageText(message.text)}</div>}
-
                 {message.files && message.files.map((file, index) => (
                   <div key={index}>
                     {file.fileType === 'image' && (
-                      <img
-                        src={file.fileData}
-                        alt="uploaded"
-                        className="chat-image"
-                      />
+                      <img src={file.fileData} alt="uploaded" className="chat-image" />
                     )}
                     {file.fileType === 'document' && (
                       <div className="file-message">📎 {file.fileName}</div>
                     )}
                   </div>
                 ))}
-
                 <div className="message-time">{formatTime(message.timestamp)}</div>
               </div>
             </div>
@@ -381,9 +344,7 @@ const ChatPage = () => {
             <div className="message bot-message">
               <div className="message-content">
                 <div className="typing-indicator">
-                  <span></span>
-                  <span></span>
-                  <span></span>
+                  <span></span><span></span><span></span>
                 </div>
               </div>
             </div>
@@ -391,31 +352,53 @@ const ChatPage = () => {
           <div ref={messagesEndRef} />
         </div>
 
+        {/* ====== Input Area ====== */}
         <div className="chat-input-area">
-          <label className="upload-btn">
-            +
-            <input type="file" hidden onChange={handleFileUpload} />
-          </label>
+          {uploadedFiles.length > 0 && (
+            <div className="uploaded-preview">
+              {uploadedFiles.map((file, index) => (
+                <div key={index} className="preview-item">
+                  {file.fileType === 'image' ? (
+                    <img src={file.fileData} alt={file.fileName} className="preview-image" />
+                  ) : (
+                    <div className="preview-doc">📎 {file.fileName}</div>
+                  )}
+                  <button
+                    className="remove-file"
+                    onClick={() =>
+                      setUploadedFiles((prev) => prev.filter((_, i) => i !== index))
+                    }
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
 
-          <textarea
-            ref={textareaRef}
-            value={message}
-            onChange={(e) => {
-              setMessage(e.target.value);
-              e.target.style.height = 'auto';
-              e.target.style.height = `${e.target.scrollHeight}px`;
-            }}
-            onKeyDown={handleKeyDown}
-            placeholder={t('typeMessage')}
-            rows={1}
-          />
+          <div className="input-row">
+            <label className="upload-btn">
+              +
+              <input type="file" hidden multiple onChange={handleFileUpload} />
+            </label>
 
-          <button 
-            onClick={handleSend}
-            disabled={isLoading || (!message && uploadedFiles.length === 0)}
-          >
-            Send
-          </button>
+            <textarea
+              ref={textareaRef}
+              value={message}
+              onChange={(e) => {
+                setMessage(e.target.value);
+                e.target.style.height = 'auto';
+                e.target.style.height = `${e.target.scrollHeight}px`;
+              }}
+              onKeyDown={handleKeyDown}
+              placeholder={t('typeMessage')}
+              rows={1}
+            />
+
+            <button onClick={handleSend} disabled={isLoading || (!message && uploadedFiles.length === 0)}>
+              Send
+            </button>
+          </div>
         </div>
       </div>
     </div>
