@@ -6,8 +6,8 @@ import './ChatPage.css';
 
 const ChatPage = () => {
   const { t, isRTL } = useLanguage();
-  
-  // Generate or get userId from localStorage
+
+  // Generate or get userId
   const getUserId = () => {
     let uid = localStorage.getItem("chatUserId");
     if (!uid) {
@@ -28,12 +28,11 @@ const ChatPage = () => {
     return newId;
   });
 
-  // Conversations
+  // State
   const [conversations, setConversations] = useState(() => {
     const saved = localStorage.getItem('chatConversations');
     return saved ? JSON.parse(saved) : [];
   });
-
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState('');
@@ -78,11 +77,9 @@ const ChatPage = () => {
       }],
       createdAt: new Date()
     };
-
     const updatedConversations = [newConversation, ...conversations];
     setConversations(updatedConversations);
     localStorage.setItem('chatConversations', JSON.stringify(updatedConversations));
-    
     setCurrentConversationId(newConversation.id);
     setSessionId(newSessionId);
     localStorage.setItem('sessionId', newSessionId);
@@ -94,7 +91,6 @@ const ChatPage = () => {
     const updatedConversations = conversations.filter(conv => conv.id !== conversationId);
     setConversations(updatedConversations);
     localStorage.setItem('chatConversations', JSON.stringify(updatedConversations));
-    
     if (currentConversationId === conversationId) {
       if (updatedConversations.length > 0) {
         loadConversation(updatedConversations[0].id);
@@ -104,24 +100,22 @@ const ChatPage = () => {
     }
   };
 
-  // Update title
+  // Update conversation title
   const updateConversationTitle = (conversationId, title) => {
-    const updatedConversations = conversations.map(conv => 
+    const updatedConversations = conversations.map(conv =>
       conv.id === conversationId ? { ...conv, title } : conv
     );
     setConversations(updatedConversations);
     localStorage.setItem('chatConversations', JSON.stringify(updatedConversations));
   };
 
+  // Initialize
   useEffect(() => {
-    if (conversations.length === 0) {
-      createNewConversation();
-    } else if (!currentConversationId) {
-      loadConversation(conversations[0].id);
-    }
+    if (conversations.length === 0) createNewConversation();
+    else if (!currentConversationId) loadConversation(conversations[0].id);
   }, []);
 
-  // Sidebar auto-close on mobile
+  // Hide sidebar on mobile when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (window.innerWidth <= 768 && isSidebarOpen && sidebarRef.current && !sidebarRef.current.contains(event.target)) {
@@ -135,9 +129,7 @@ const ChatPage = () => {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  useEffect(() => scrollToBottom(), [messages]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -146,12 +138,12 @@ const ChatPage = () => {
     }
   };
 
-  // === File Upload (ChatGPT-style preview) ===
+  // Handle file upload
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
 
-    const maxSize = 10 * 1024 * 1024;
+    const maxSize = 10 * 1024 * 1024; // 10MB
     const newFiles = [];
 
     files.forEach((file) => {
@@ -169,18 +161,21 @@ const ChatPage = () => {
           fileId,
           fileName: file.name,
           fileType: isImage ? 'image' : 'document',
-          fileData: reader.result,
+          fileData: file,
         });
+
         if (newFiles.length === files.length) {
           setUploadedFiles((prev) => [...prev, ...newFiles]);
         }
       };
+
       reader.readAsDataURL(file);
     });
 
     e.target.value = '';
   };
 
+  // ✅ Handle send (FormData + no stream read error)
   const handleSend = async () => {
     if (!message && uploadedFiles.length === 0) return;
     setIsLoading(true);
@@ -197,7 +192,6 @@ const ChatPage = () => {
     const updatedMessages = [...messages, newMessage];
     setMessages(updatedMessages);
     setMessage('');
-    setUploadedFiles([]);
 
     if (messages.length === 1) {
       const title = message.length > 30 ? message.substring(0, 30) + '...' : message;
@@ -205,33 +199,33 @@ const ChatPage = () => {
     }
 
     try {
-      const payload = {
-        userId,
-        sessionId,
-        message: message || "",
-        attachments: uploadedFiles,
-      };
+      const formData = new FormData();
+      formData.append('userId', userId);
+      formData.append('sessionId', sessionId);
+      formData.append('message', message || "");
+
+      uploadedFiles.forEach((file, index) => {
+        formData.append(`file_${index}`, file.fileData);
+        formData.append(`fileId_${index}`, file.fileId);
+        formData.append(`fileName_${index}`, file.fileName);
+        formData.append(`fileType_${index}`, file.fileType);
+      });
 
       const response = await fetch('https://saudg.app.n8n.cloud/webhook/chat-webhook', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: formData,
       });
-      
+
       let replyText = "";
-      const clone = response.clone(); // ✅ ننسخ الرد مرة واحدة
-      
       try {
-        const data = await response.json();
-        replyText = data.message?.content || data.text || data.reply || JSON.stringify(data);
+        const cloned = response.clone();
+        const data = await cloned.json().catch(() => null);
+        replyText = data
+          ? data.message?.content || data.text || data.reply || JSON.stringify(data)
+          : await response.text();
       } catch {
-        try {
-          replyText = await clone.text();
-        } catch {
-          replyText = "⚠️ Error reading response.";
-        }
+        replyText = "⚠️ Error reading server response.";
       }
-      
 
       const botResponse = {
         id: messages.length + 2,
@@ -244,8 +238,8 @@ const ChatPage = () => {
       const finalMessages = [...updatedMessages, botResponse];
       setMessages(finalMessages);
 
-      const updatedConversations = conversations.map(conv => 
-        conv.id === currentConversationId 
+      const updatedConversations = conversations.map(conv =>
+        conv.id === currentConversationId
           ? { ...conv, messages: finalMessages }
           : conv
       );
@@ -253,22 +247,23 @@ const ChatPage = () => {
       localStorage.setItem('chatConversations', JSON.stringify(updatedConversations));
 
     } catch (error) {
+      console.error("❌ Error sending message:", error);
       const errorMessage = {
         id: messages.length + 2,
-        text: t('errorMessage'),
+        text: t('errorMessage') || "An error occurred. Please try again.",
         isUser: false,
         sender: t('bot'),
         timestamp: new Date()
       };
-      setMessages([...messages, errorMessage]);
+      setMessages([...updatedMessages, errorMessage]);
     } finally {
       setIsLoading(false);
+      setUploadedFiles([]);
     }
   };
 
-  const formatTime = (date) => {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
+  const formatTime = (date) =>
+    date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   const formatDate = (date) => {
     const today = new Date();
@@ -285,8 +280,7 @@ const ChatPage = () => {
       <div ref={sidebarRef} className={`chat-sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
         <div className="sidebar-header">
           <button className="new-chat-btn" onClick={createNewConversation}>
-            <span className="plus-icon">+</span>
-            New Chat
+            <span className="plus-icon">+</span> New Chat
           </button>
           <button className="sidebar-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
             <span className="arrow-icon">{isSidebarOpen ? '←' : '→'}</span>
@@ -319,7 +313,7 @@ const ChatPage = () => {
         </div>
       </div>
 
-      {/* Main Chat Area */}
+      {/* Chat Main */}
       <div className={`chat-main ${isSidebarOpen ? 'with-sidebar' : 'full-width'}`}>
         <div className="chat-header">
           <button className="mobile-sidebar-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
@@ -329,52 +323,47 @@ const ChatPage = () => {
         </div>
 
         <div className="chat-messages">
-          {messages.map((message) => (
-            <div key={message.id} className={`message ${message.isUser ? 'user-message' : 'bot-message'}`}>
+          {messages.map((msg) => (
+            <div key={msg.id} className={`message ${msg.isUser ? 'user-message' : 'bot-message'}`}>
               <div className="message-content">
-                {message.text && <div className="message-text">{formatMessageText(message.text)}</div>}
-                {message.files && message.files.map((file, index) => (
+                {msg.text && <div className="message-text">{formatMessageText(msg.text)}</div>}
+                {msg.files && msg.files.map((file, index) => (
                   <div key={index}>
-                    {file.fileType === 'image' && (
-                      <img src={file.fileData} alt="uploaded" className="chat-image" />
-                    )}
-                    {file.fileType === 'document' && (
+                    {file.fileType === 'image' ? (
+                      <img src={URL.createObjectURL(file.fileData)} alt="uploaded" className="chat-image" />
+                    ) : (
                       <div className="file-message">📎 {file.fileName}</div>
                     )}
                   </div>
                 ))}
-                <div className="message-time">{formatTime(message.timestamp)}</div>
+                <div className="message-time">{formatTime(msg.timestamp)}</div>
               </div>
             </div>
           ))}
           {isLoading && (
             <div className="message bot-message">
               <div className="message-content">
-                <div className="typing-indicator">
-                  <span></span><span></span><span></span>
-                </div>
+                <div className="typing-indicator"><span></span><span></span><span></span></div>
               </div>
             </div>
           )}
           <div ref={messagesEndRef} />
         </div>
 
-        {/* ====== Input Area ====== */}
+        {/* Input area */}
         <div className="chat-input-area">
           {uploadedFiles.length > 0 && (
             <div className="uploaded-preview">
               {uploadedFiles.map((file, index) => (
                 <div key={index} className="preview-item">
                   {file.fileType === 'image' ? (
-                    <img src={file.fileData} alt={file.fileName} className="preview-image" />
+                    <img src={URL.createObjectURL(file.fileData)} alt={file.fileName} className="preview-image" />
                   ) : (
                     <div className="preview-doc">📎 {file.fileName}</div>
                   )}
                   <button
                     className="remove-file"
-                    onClick={() =>
-                      setUploadedFiles((prev) => prev.filter((_, i) => i !== index))
-                    }
+                    onClick={() => setUploadedFiles(prev => prev.filter((_, i) => i !== index))}
                   >
                     ✕
                   </button>
