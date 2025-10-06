@@ -161,7 +161,7 @@ const ChatPage = () => {
           fileId,
           fileName: file.name,
           fileType: isImage ? 'image' : 'document',
-          fileData: file,
+          fileData: reader.result,
         });
 
         if (newFiles.length === files.length) {
@@ -175,7 +175,7 @@ const ChatPage = () => {
     e.target.value = '';
   };
 
-  // ✅ Handle send (FormData + no stream read error)
+  // ✅ Send message and files
   const handleSend = async () => {
     if (!message && uploadedFiles.length === 0) return;
     setIsLoading(true);
@@ -192,6 +192,7 @@ const ChatPage = () => {
     const updatedMessages = [...messages, newMessage];
     setMessages(updatedMessages);
     setMessage('');
+    setUploadedFiles([]);
 
     if (messages.length === 1) {
       const title = message.length > 30 ? message.substring(0, 30) + '...' : message;
@@ -200,16 +201,27 @@ const ChatPage = () => {
 
     try {
       const formData = new FormData();
-      formData.append('userId', userId);
-      formData.append('sessionId', sessionId);
-      formData.append('message', message || "");
+      formData.append("userId", userId);
+      formData.append("sessionId", sessionId);
+      formData.append("message", message || "");
 
-      uploadedFiles.forEach((file, index) => {
-        formData.append(`file_${index}`, file.fileData);
-        formData.append(`fileId_${index}`, file.fileId);
-        formData.append(`fileName_${index}`, file.fileName);
-        formData.append(`fileType_${index}`, file.fileType);
+      uploadedFiles.forEach((file) => {
+        const blob = dataURLtoBlob(file.fileData);
+        formData.append("data", blob, file.fileName);
       });
+
+      // helper
+      function dataURLtoBlob(dataurl) {
+        const arr = dataurl.split(',');
+        const mime = arr[0].match(/:(.*?);/)[1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new Blob([u8arr], { type: mime });
+      }
 
       const response = await fetch('https://saudg.app.n8n.cloud/webhook/chat-webhook', {
         method: 'POST',
@@ -217,14 +229,17 @@ const ChatPage = () => {
       });
 
       let replyText = "";
+      const clone = response.clone();
+
       try {
-        const cloned = response.clone();
-        const data = await cloned.json().catch(() => null);
-        replyText = data
-          ? data.message?.content || data.text || data.reply || JSON.stringify(data)
-          : await response.text();
+        const data = await response.json();
+        replyText = data.message?.content || data.text || data.reply || JSON.stringify(data);
       } catch {
-        replyText = "⚠️ Error reading server response.";
+        try {
+          replyText = await clone.text();
+        } catch {
+          replyText = "⚠️ Error reading response.";
+        }
       }
 
       const botResponse = {
@@ -247,7 +262,7 @@ const ChatPage = () => {
       localStorage.setItem('chatConversations', JSON.stringify(updatedConversations));
 
     } catch (error) {
-      console.error("❌ Error sending message:", error);
+      console.error("❌ Fetch error:", error);
       const errorMessage = {
         id: messages.length + 2,
         text: t('errorMessage') || "An error occurred. Please try again.",
@@ -255,10 +270,10 @@ const ChatPage = () => {
         sender: t('bot'),
         timestamp: new Date()
       };
-      setMessages([...updatedMessages, errorMessage]);
+      const finalMessages = [...updatedMessages, errorMessage];
+      setMessages(finalMessages);
     } finally {
       setIsLoading(false);
-      setUploadedFiles([]);
     }
   };
 
@@ -330,7 +345,7 @@ const ChatPage = () => {
                 {msg.files && msg.files.map((file, index) => (
                   <div key={index}>
                     {file.fileType === 'image' ? (
-                      <img src={URL.createObjectURL(file.fileData)} alt="uploaded" className="chat-image" />
+                      <img src={file.fileData} alt="uploaded" className="chat-image" />
                     ) : (
                       <div className="file-message">📎 {file.fileName}</div>
                     )}
@@ -357,7 +372,7 @@ const ChatPage = () => {
               {uploadedFiles.map((file, index) => (
                 <div key={index} className="preview-item">
                   {file.fileType === 'image' ? (
-                    <img src={URL.createObjectURL(file.fileData)} alt={file.fileName} className="preview-image" />
+                    <img src={file.fileData} alt={file.fileName} className="preview-image" />
                   ) : (
                     <div className="preview-doc">📎 {file.fileName}</div>
                   )}
