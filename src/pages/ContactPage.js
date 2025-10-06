@@ -145,7 +145,7 @@ const ContactPage = () => {
     const userInput = inputValue;
 
     try {
-      const response = await fetch("https://saudg.app.n8n.cloud/webhook-test/chat-webhook", {
+      const response = await fetch("https://saudg.app.n8n.cloud/webhook/chat-webhook", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, message: userInput })
