@@ -23,13 +23,19 @@ const ChatPage = () => {
     return "session-" + Math.random().toString(36).substr(2, 9) + "-" + Date.now();
   };
 
-  // Generate unique file identifiers
+  // Generate unique file identifiers using UUID-like format
   const generateFileId = () => {
-    return "file-" + Math.random().toString(36).substr(2, 9) + "-" + Date.now();
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substr(2, 9);
+    const random2 = Math.random().toString(36).substr(2, 9);
+    return `file-${random}-${random2}-${timestamp}`;
   };
 
   const generateImageId = () => {
-    return "image-" + Math.random().toString(36).substr(2, 9) + "-" + Date.now();
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substr(2, 9);
+    const random2 = Math.random().toString(36).substr(2, 9);
+    return `image-${random}-${random2}-${timestamp}`;
   };
 
   // State for conversations
@@ -193,20 +199,18 @@ const ChatPage = () => {
       const webhookPayload = {
         userId: userId,
         sessionId: sessionId,
-        message: userInput
+        message: userInput || "", // Ensure message is never undefined
+        timestamp: new Date().toISOString()
       };
 
       // Add file information if a file is selected
       if (selectedFile) {
-        if (selectedFile.type.startsWith("image/")) {
-          webhookPayload.imageId = selectedFile.fileId;
-          webhookPayload.imageName = selectedFile.name;
-          webhookPayload.imageType = selectedFile.type;
-        } else {
-          webhookPayload.fileId = selectedFile.fileId;
-          webhookPayload.fileName = selectedFile.name;
-          webhookPayload.fileType = selectedFile.type;
-        }
+        webhookPayload.fileId = selectedFile.fileId;
+        webhookPayload.fileType = selectedFile.fileType;
+        webhookPayload.fileName = selectedFile.fileName;
+        webhookPayload.fileUrl = selectedFile.fileUrl;
+        webhookPayload.fileTimestamp = selectedFile.timestamp;
+        webhookPayload.fileSize = selectedFile.fileSize;
       }
 
       // Send message to n8n with userId, sessionId, and file info
@@ -264,11 +268,36 @@ const ChatPage = () => {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const fileWithId = {
-        ...file,
-        fileId: file.type.startsWith("image/") ? generateImageId() : generateFileId()
+      // Check file size (limit to 10MB for base64 conversion)
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (file.size > maxSize) {
+        alert('File size too large. Please select a file smaller than 10MB.');
+        e.target.value = ''; // Clear the input
+        return;
+      }
+
+      const fileId = file.type.startsWith("image/") ? generateImageId() : generateFileId();
+      const fileType = file.type.startsWith("image/") ? "image" : "document";
+      
+      // Convert file to base64 for fileUrl
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const fileWithMetadata = {
+          ...file,
+          fileId: fileId,
+          fileType: fileType,
+          fileName: file.name,
+          fileUrl: event.target.result, // base64 data URL
+          timestamp: new Date().toISOString(),
+          fileSize: file.size
+        };
+        setSelectedFile(fileWithMetadata);
       };
-      setSelectedFile(fileWithId);
+      reader.onerror = () => {
+        alert('Error reading file. Please try again.');
+        e.target.value = ''; // Clear the input
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -358,15 +387,29 @@ const ChatPage = () => {
                 {message.text && <div className="message-text">{formatMessageText(message.text)}</div>}
 
                 {message.file && message.file.type.startsWith("image/") && (
-                  <img
-                    src={URL.createObjectURL(message.file)}
-                    alt="uploaded"
-                    className="chat-image"
-                  />
+                  <div className="file-container">
+                    <img
+                      src={URL.createObjectURL(message.file)}
+                      alt="uploaded"
+                      className="chat-image"
+                    />
+                    {message.file.fileId && (
+                      <div className="file-id-tag" title="Image ID">
+                        ID: {message.file.fileId}
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {message.file && !message.file.type.startsWith("image/") && (
-                  <div className="file-message">📎 {message.file.name}</div>
+                  <div className="file-container">
+                    <div className="file-message">📎 {message.file.name}</div>
+                    {message.file.fileId && (
+                      <div className="file-id-tag" title="File ID">
+                        ID: {message.file.fileId}
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 <div className="message-time">{formatTime(message.timestamp)}</div>
