@@ -18,6 +18,20 @@ const ChatPage = () => {
 
   const userId = getUserId();
 
+  // Generate unique SessionID
+  const generateSessionId = () => {
+    return "session-" + Math.random().toString(36).substr(2, 9) + "-" + Date.now();
+  };
+
+  // Generate unique file identifiers
+  const generateFileId = () => {
+    return "file-" + Math.random().toString(36).substr(2, 9) + "-" + Date.now();
+  };
+
+  const generateImageId = () => {
+    return "image-" + Math.random().toString(36).substr(2, 9) + "-" + Date.now();
+  };
+
   // State for conversations
   const [conversations, setConversations] = useState(() => {
     const saved = localStorage.getItem('chatConversations');
@@ -26,6 +40,10 @@ const ChatPage = () => {
 
   // State for current conversation
   const [currentConversationId, setCurrentConversationId] = useState(null);
+  const [sessionId, setSessionId] = useState(() => {
+    const saved = localStorage.getItem('currentSessionId');
+    return saved || generateSessionId();
+  });
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
@@ -36,11 +54,13 @@ const ChatPage = () => {
   const textareaRef = useRef(null);
   const sidebarRef = useRef(null);
 
-  // Auto-resize textarea
+  // Auto-resize textarea with max height
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+      const scrollHeight = textareaRef.current.scrollHeight;
+      const maxHeight = 200; // Maximum height in pixels
+      textareaRef.current.style.height = Math.min(scrollHeight, maxHeight) + 'px';
     }
   }, [inputValue]);
 
@@ -49,14 +69,17 @@ const ChatPage = () => {
     const conversation = conversations.find(conv => conv.id === conversationId);
     if (conversation) {
       setCurrentConversationId(conversationId);
+      setSessionId(conversation.sessionId || generateSessionId());
       setMessages(conversation.messages);
     }
   };
 
   // Create new conversation
   const createNewConversation = () => {
+    const newSessionId = generateSessionId();
     const newConversation = {
       id: Date.now().toString(),
+      sessionId: newSessionId,
       title: 'New Chat',
       messages: [{
         id: 1,
@@ -73,6 +96,8 @@ const ChatPage = () => {
     localStorage.setItem('chatConversations', JSON.stringify(updatedConversations));
     
     setCurrentConversationId(newConversation.id);
+    setSessionId(newSessionId);
+    localStorage.setItem('currentSessionId', newSessionId);
     setMessages(newConversation.messages);
   };
 
@@ -108,6 +133,13 @@ const ChatPage = () => {
       loadConversation(conversations[0].id);
     }
   }, []);
+
+  // Save sessionId to localStorage when it changes
+  useEffect(() => {
+    if (sessionId) {
+      localStorage.setItem('currentSessionId', sessionId);
+    }
+  }, [sessionId]);
 
   // Close sidebar on mobile when clicking outside
   useEffect(() => {
@@ -161,14 +193,27 @@ const ChatPage = () => {
     const userInput = inputValue;
 
     try {
-      // Send message to n8n with userId
+      // Prepare webhook payload with sessionId and file information
+      const webhookPayload = {
+        userId: userId,
+        sessionId: sessionId,
+        message: userInput || "", // Ensure message is never undefined
+        timestamp: new Date().toISOString()
+      };
+
+      // Add file information if a file is selected
+      if (selectedFile) {
+        webhookPayload.fileType = selectedFile.fileType;
+        webhookPayload.fileId = selectedFile.fileId;
+        webhookPayload.fileName = selectedFile.fileName;
+        webhookPayload.fileUrl = selectedFile.fileUrl;
+      }
+
+      // Send message to n8n with userId, sessionId, and file info
       const response = await fetch("https://saudg.app.n8n.cloud/webhook/chat-webhook", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          userId: userId,
-          message: userInput 
-        })
+        body: JSON.stringify(webhookPayload)
       });
 
       let replyText = "";
@@ -217,7 +262,39 @@ const ChatPage = () => {
   };
 
   const handleFileChange = (e) => {
-    setSelectedFile(e.target.files[0]);
+    const file = e.target.files[0];
+    if (file) {
+      // Check file size (limit to 10MB for base64 conversion)
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (file.size > maxSize) {
+        alert('File size too large. Please select a file smaller than 10MB.');
+        e.target.value = ''; // Clear the input
+        return;
+      }
+
+      const fileId = file.type.startsWith("image/") ? generateImageId() : generateFileId();
+      const fileType = file.type.startsWith("image/") ? "image" : "document";
+      
+      // Convert file to base64 for fileUrl
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const fileWithMetadata = {
+          ...file,
+          fileId: fileId,
+          fileType: fileType,
+          fileName: file.name,
+          fileUrl: event.target.result, // base64 data URL
+          timestamp: new Date().toISOString(),
+          fileSize: file.size
+        };
+        setSelectedFile(fileWithMetadata);
+      };
+      reader.onerror = () => {
+        alert('Error reading file. Please try again.');
+        e.target.value = ''; // Clear the input
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const formatTime = (date) => {
@@ -363,6 +440,7 @@ const ChatPage = () => {
                     e.preventDefault();
                     handleSendMessage(e);
                   }
+                  // Allow Shift+Enter for new lines (default behavior)
                 }}
               />
 
