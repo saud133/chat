@@ -217,14 +217,21 @@ const ChatPage = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-
+      
       let replyText = "";
+      const clone = response.clone(); // ✅ ننسخ الرد مرة واحدة
+      
       try {
         const data = await response.json();
         replyText = data.message?.content || data.text || data.reply || JSON.stringify(data);
       } catch {
-        replyText = await response.text();
+        try {
+          replyText = await clone.text();
+        } catch {
+          replyText = "⚠️ Error reading response.";
+        }
       }
+      
 
       const botResponse = {
         id: messages.length + 2,
