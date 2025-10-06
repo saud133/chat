@@ -23,13 +23,23 @@ const ChatPage = () => {
     return "session-" + Math.random().toString(36).substr(2, 9) + "-" + Date.now();
   };
 
-  // Generate unique file identifiers
+  // Generate unique file identifiers with UUID-like format
   const generateFileId = () => {
-    return "file-" + Math.random().toString(36).substr(2, 9) + "-" + Date.now();
+    const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+    return `FileId_${uuid}`;
   };
 
   const generateImageId = () => {
-    return "image-" + Math.random().toString(36).substr(2, 9) + "-" + Date.now();
+    const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+    return `ImageId_${uuid}`;
   };
 
   // State for conversations
@@ -54,13 +64,23 @@ const ChatPage = () => {
   const textareaRef = useRef(null);
   const sidebarRef = useRef(null);
 
-  // Auto-resize textarea with max height
+  // Auto-resize textarea with max height (6-8 lines like ChatGPT)
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       const scrollHeight = textareaRef.current.scrollHeight;
-      const maxHeight = 200; // Maximum height in pixels
-      textareaRef.current.style.height = Math.min(scrollHeight, maxHeight) + 'px';
+      const lineHeight = 24; // Approximate line height in pixels
+      const maxLines = 8;
+      const maxHeight = lineHeight * maxLines;
+      const newHeight = Math.min(scrollHeight, maxHeight);
+      textareaRef.current.style.height = newHeight + 'px';
+      
+      // Enable scrolling if content exceeds max height
+      if (scrollHeight > maxHeight) {
+        textareaRef.current.style.overflowY = 'auto';
+      } else {
+        textareaRef.current.style.overflowY = 'hidden';
+      }
     }
   }, [inputValue]);
 
@@ -68,8 +88,10 @@ const ChatPage = () => {
   const loadConversation = (conversationId) => {
     const conversation = conversations.find(conv => conv.id === conversationId);
     if (conversation) {
+      const sessionIdToUse = conversation.sessionId || generateSessionId();
       setCurrentConversationId(conversationId);
-      setSessionId(conversation.sessionId || generateSessionId());
+      setSessionId(sessionIdToUse);
+      localStorage.setItem('currentSessionId', sessionIdToUse);
       setMessages(conversation.messages);
     }
   };
@@ -198,15 +220,17 @@ const ChatPage = () => {
         userId: userId,
         sessionId: sessionId,
         message: userInput || "", // Ensure message is never undefined
-        timestamp: new Date().toISOString()
+        attachments: []
       };
 
       // Add file information if a file is selected
       if (selectedFile) {
-        webhookPayload.fileType = selectedFile.fileType;
-        webhookPayload.fileId = selectedFile.fileId;
-        webhookPayload.fileName = selectedFile.fileName;
-        webhookPayload.fileUrl = selectedFile.fileUrl;
+        webhookPayload.attachments.push({
+          fileId: selectedFile.fileId,
+          fileName: selectedFile.fileName,
+          fileType: selectedFile.fileType,
+          fileData: selectedFile.fileUrl
+        });
       }
 
       // Send message to n8n with userId, sessionId, and file info

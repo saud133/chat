@@ -338,12 +338,13 @@
 .input-wrapper {
   display: flex;
   flex: 1;
-  background: #f7f7f8;
+  background: #f5f5f5;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
-  padding: 0.5rem;
+  padding: 10px;
   align-items: flex-end;
   transition: all 0.2s ease;
+  min-height: 50px;
 }
 
 .input-wrapper:focus-within {
@@ -354,20 +355,21 @@
 
 .chat-input {
   flex: 1;
-  padding: 0.75rem 1rem;
+  padding: 0;
   border: none;
   outline: none;
   font-size: 0.9rem;
   resize: none;
   min-height: 24px;
-  max-height: 200px;
+  max-height: 192px; /* 8 lines * 24px line height */
   font-family: inherit;
-  line-height: 1.5;
+  line-height: 24px;
   background: transparent;
-  border-radius: 8px;
-  overflow-y: auto;
+  border-radius: 0;
+  overflow-y: hidden;
   word-wrap: break-word;
   white-space: pre-wrap;
+  vertical-align: top;
 }
 
 .chat-input::placeholder {
@@ -583,14 +585,15 @@
   }
 
   .input-wrapper {
-    padding: 0.4rem;
+    padding: 8px;
+    min-height: 44px;
   }
 
   .chat-input {
-    padding: 0.6rem 0.8rem;
     font-size: 0.85rem;
     min-height: 20px;
-    max-height: 150px;
+    max-height: 144px; /* 6 lines * 24px line height */
+    line-height: 24px;
   }
 
   .send-button {
