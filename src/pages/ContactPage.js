@@ -16,7 +16,7 @@ const ContactPage = () => {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // ✅ Load from localStorage
+  // ✅ Load saved conversations
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem("conversations") || "[]");
     setConversations(saved);
@@ -26,7 +26,7 @@ const ContactPage = () => {
     }
   }, []);
 
-  // ✅ Save to localStorage
+  // ✅ Save on every update
   useEffect(() => {
     localStorage.setItem("conversations", JSON.stringify(conversations));
   }, [conversations]);
@@ -53,7 +53,7 @@ const ContactPage = () => {
 
   // ✅ Delete conversation
   const deleteConversation = (id) => {
-    const updated = conversations.filter(c => c.id !== id);
+    const updated = conversations.filter((c) => c.id !== id);
     setConversations(updated);
     if (currentConversationId === id) {
       setCurrentConversationId(updated.length ? updated[0].id : null);
@@ -61,13 +61,13 @@ const ContactPage = () => {
     }
   };
 
-  // ✅ Format date
+  // ✅ Format date helper
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString();
   };
 
-  // ✅ User ID
+  // ✅ Generate user ID
   const getUserId = () => {
     let uid = localStorage.getItem("chatUserId");
     if (!uid) {
@@ -78,18 +78,19 @@ const ContactPage = () => {
   };
   const userId = getUserId();
 
+  // ✅ Text & files
   const [inputValue, setInputValue] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
-  // ✅ Scroll to bottom
+  // ✅ Scroll always to bottom
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
   useEffect(() => scrollToBottom(), [messages]);
 
-  // ✅ Auto-resize textarea
+  // ✅ Auto resize textarea
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -97,7 +98,13 @@ const ContactPage = () => {
     }
   }, [inputValue]);
 
-  // ✅ Handle file select
+  // ✅ Detect text direction dynamically
+  const detectDirection = (text) => {
+    const rtlChars = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/;
+    return rtlChars.test(text) ? 'rtl' : 'ltr';
+  };
+
+  // ✅ File selection
   const handleFileChange = (e) => {
     setSelectedFile(e.target.files[0]);
   };
@@ -110,7 +117,7 @@ const ContactPage = () => {
 
     let convId = currentConversationId;
 
-    // 1️⃣ Create new conversation if needed
+    // Create conversation if none exists
     if (!convId) {
       const title = inputValue.trim().slice(0, 30);
       const newConv = {
@@ -125,7 +132,7 @@ const ContactPage = () => {
       setMessages([]);
     }
 
-    // 2️⃣ Add user message
+    // Create user message
     const newMessage = {
       id: Date.now(),
       text: inputValue,
@@ -154,11 +161,10 @@ const ContactPage = () => {
       })
     );
 
-    // ✅ Prepare formData for n8n webhook
+    // Prepare formData
     const formData = new FormData();
     formData.append('userId', userId);
     formData.append('message', inputValue);
-
     if (selectedFile) {
       const fileId = selectedFile.type.startsWith("image/")
         ? `ImageId_${Date.now()}`
@@ -180,7 +186,7 @@ const ContactPage = () => {
         replyText = await response.text();
       }
 
-      // ✨ كتابة تدريجية مثل ChatGPT
+      // Simulate typing like ChatGPT
       const botMessageId = Date.now();
       const botResponse = {
         id: botMessageId,
@@ -192,7 +198,7 @@ const ContactPage = () => {
       setMessages(prev => [...prev, botResponse]);
 
       let index = 0;
-      const typingSpeed = 20; // سرعة الكتابة
+      const typingSpeed = 20;
       const interval = setInterval(() => {
         if (index < replyText.length) {
           const partialText = replyText.slice(0, index + 1);
@@ -202,7 +208,6 @@ const ContactPage = () => {
           index++;
         } else {
           clearInterval(interval);
-          // ✅ Save reply after finish
           setConversations(prev =>
             prev.map(c =>
               c.id === convId
@@ -269,7 +274,7 @@ const ContactPage = () => {
         </div>
       </div>
 
-      {/* Chat Main */}
+      {/* Main Chat */}
       <div className={`chat-main ${isSidebarOpen ? 'with-sidebar' : 'full-width'}`}>
         <div className="chat-header">
           <button className="mobile-sidebar-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>☰</button>
@@ -278,9 +283,19 @@ const ContactPage = () => {
 
         <div className="chat-messages">
           {messages.map(message => (
-            <div key={message.id} className={`message ${message.isUser ? 'user-message' : 'bot-message'}`}>
+            <div key={message.id} className={`message ${message.isUser ? 'user-message' : 'bot-message'} ${message.isTyping ? 'typing' : ''}`}>
               <div className="message-content">
-                {message.text && <div className="message-text">{formatMessageText(message.text)}</div>}
+                {message.text && (
+                  <div
+                    className="message-text"
+                    style={{
+                      direction: detectDirection(message.text),
+                      textAlign: detectDirection(message.text) === 'rtl' ? 'right' : 'left'
+                    }}
+                  >
+                    {formatMessageText(message.text)}
+                  </div>
+                )}
                 {message.file && message.file.type.startsWith("image/") && (
                   <img src={URL.createObjectURL(message.file)} alt="uploaded" className="chat-image" />
                 )}
@@ -301,7 +316,7 @@ const ContactPage = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input */}
+        {/* Input Area */}
         <form className="chat-input-form" onSubmit={handleSendMessage}>
           {selectedFile && (
             <div className="file-preview">
@@ -324,6 +339,10 @@ const ContactPage = () => {
               placeholder={t('typeMessage')}
               className="chat-input"
               rows={1}
+              style={{
+                direction: detectDirection(inputValue),
+                textAlign: detectDirection(inputValue) === 'rtl' ? 'right' : 'left'
+              }}
             />
             <button type="submit" className="send-button" disabled={isLoading || (inputValue.trim() === '' && !selectedFile)}>
               {t('send')}
