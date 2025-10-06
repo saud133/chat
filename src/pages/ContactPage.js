@@ -16,7 +16,7 @@ const ContactPage = () => {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // ✅ Load from localStorage on mount
+  // ✅ Load from localStorage
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem("conversations") || "[]");
     setConversations(saved);
@@ -26,7 +26,7 @@ const ContactPage = () => {
     }
   }, []);
 
-  // ✅ Save to localStorage on every change
+  // ✅ Save to localStorage
   useEffect(() => {
     localStorage.setItem("conversations", JSON.stringify(conversations));
   }, [conversations]);
@@ -53,7 +53,7 @@ const ContactPage = () => {
 
   // ✅ Delete conversation
   const deleteConversation = (id) => {
-    const updated = conversations.filter((c) => c.id !== id);
+    const updated = conversations.filter(c => c.id !== id);
     setConversations(updated);
     if (currentConversationId === id) {
       setCurrentConversationId(updated.length ? updated[0].id : null);
@@ -61,7 +61,7 @@ const ContactPage = () => {
     }
   };
 
-  // ✅ Format date helper
+  // ✅ Format date
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString();
@@ -81,21 +81,28 @@ const ContactPage = () => {
   const [inputValue, setInputValue] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null);
 
+  // ✅ Scroll to bottom
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+  useEffect(() => scrollToBottom(), [messages]);
 
+  // ✅ Auto-resize textarea
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + "px";
+    }
+  }, [inputValue]);
 
-  // ✅ Handle file selection
+  // ✅ Handle file select
   const handleFileChange = (e) => {
     setSelectedFile(e.target.files[0]);
   };
 
-  // ✅ Send message (supports file upload)
+  // ✅ Send message
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (inputValue.trim() === '' && !selectedFile) return;
@@ -118,7 +125,7 @@ const ContactPage = () => {
       setMessages([]);
     }
 
-    // 2️⃣ Create user message
+    // 2️⃣ Add user message
     const newMessage = {
       id: Date.now(),
       text: inputValue,
@@ -132,7 +139,7 @@ const ContactPage = () => {
     setInputValue('');
     setSelectedFile(null);
 
-    // 3️⃣ Update conversation
+    // Update conversation
     setConversations(prev =>
       prev.map(c => {
         if (c.id === convId) {
@@ -147,7 +154,7 @@ const ContactPage = () => {
       })
     );
 
-    // ✅ Prepare formData for n8n
+    // ✅ Prepare formData for n8n webhook
     const formData = new FormData();
     formData.append('userId', userId);
     formData.append('message', inputValue);
@@ -159,15 +166,10 @@ const ContactPage = () => {
       formData.append(fileId, selectedFile, selectedFile.name);
     }
 
-    // 🔍 Debug what is sent
-    for (let [key, value] of formData.entries()) {
-      console.log('🟢 FormData Entry:', key, value);
-    }
-
     try {
       const response = await fetch("https://saudg.app.n8n.cloud/webhook/chat-webhook", {
         method: "POST",
-        body: formData, // ✅ no headers
+        body: formData,
       });
 
       let replyText = "";
@@ -178,20 +180,38 @@ const ContactPage = () => {
         replyText = await response.text();
       }
 
+      // ✨ كتابة تدريجية مثل ChatGPT
+      const botMessageId = Date.now();
       const botResponse = {
-        id: Date.now(),
-        text: replyText,
+        id: botMessageId,
+        text: "",
         isUser: false,
         sender: t('bot'),
         timestamp: new Date()
       };
-
       setMessages(prev => [...prev, botResponse]);
-      setConversations(prev =>
-        prev.map(c =>
-          c.id === convId ? { ...c, messages: [...c.messages, botResponse] } : c
-        )
-      );
+
+      let index = 0;
+      const typingSpeed = 20; // سرعة الكتابة
+      const interval = setInterval(() => {
+        if (index < replyText.length) {
+          const partialText = replyText.slice(0, index + 1);
+          setMessages(prev =>
+            prev.map(m => (m.id === botMessageId ? { ...m, text: partialText } : m))
+          );
+          index++;
+        } else {
+          clearInterval(interval);
+          // ✅ Save reply after finish
+          setConversations(prev =>
+            prev.map(c =>
+              c.id === convId
+                ? { ...c, messages: [...c.messages, { ...botResponse, text: replyText }] }
+                : c
+            )
+          );
+        }
+      }, typingSpeed);
 
     } catch (error) {
       console.error("❌ Fetch error:", error);
@@ -217,8 +237,7 @@ const ContactPage = () => {
       <div ref={sidebarRef} className={`chat-sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
         <div className="sidebar-header">
           <button className="new-chat-btn" onClick={createNewConversation}>
-            <span className="plus-icon">+</span>
-            New Chat
+            <span className="plus-icon">+</span> New Chat
           </button>
           <button className="sidebar-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
             <span className="arrow-icon">{isSidebarOpen ? '←' : '→'}</span>
@@ -226,7 +245,7 @@ const ContactPage = () => {
         </div>
 
         <div className="conversations-list">
-          {conversations.map((conversation) => (
+          {conversations.map(conversation => (
             <div
               key={conversation.id}
               className={`conversation-item ${currentConversationId === conversation.id ? 'active' : ''}`}
@@ -242,7 +261,6 @@ const ContactPage = () => {
                   e.stopPropagation();
                   deleteConversation(conversation.id);
                 }}
-                title="Delete conversation"
               >
                 🗑️
               </button>
@@ -251,17 +269,15 @@ const ContactPage = () => {
         </div>
       </div>
 
-      {/* Main Chat */}
+      {/* Chat Main */}
       <div className={`chat-main ${isSidebarOpen ? 'with-sidebar' : 'full-width'}`}>
         <div className="chat-header">
-          <button className="mobile-sidebar-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-            ☰
-          </button>
+          <button className="mobile-sidebar-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>☰</button>
           <h2>{t('contactSupport')}</h2>
         </div>
 
         <div className="chat-messages">
-          {messages.map((message) => (
+          {messages.map(message => (
             <div key={message.id} className={`message ${message.isUser ? 'user-message' : 'bot-message'}`}>
               <div className="message-content">
                 {message.text && <div className="message-text">{formatMessageText(message.text)}</div>}
@@ -278,9 +294,7 @@ const ContactPage = () => {
           {isLoading && (
             <div className="message bot-message">
               <div className="message-content">
-                <div className="typing-indicator">
-                  <span></span><span></span><span></span>
-                </div>
+                <div className="typing-indicator"><span></span><span></span><span></span></div>
               </div>
             </div>
           )}
@@ -299,15 +313,17 @@ const ContactPage = () => {
               <button type="button" className="remove-file" onClick={() => setSelectedFile(null)}>✕</button>
             </div>
           )}
+
           <div className="input-container">
             <label htmlFor="file-upload" className="file-upload-btn">+</label>
             <input id="file-upload" type="file" onChange={handleFileChange} style={{ display: "none" }} />
-            <input
-              type="text"
+            <textarea
+              ref={textareaRef}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder={t('typeMessage')}
               className="chat-input"
+              rows={1}
             />
             <button type="submit" className="send-button" disabled={isLoading || (inputValue.trim() === '' && !selectedFile)}>
               {t('send')}
