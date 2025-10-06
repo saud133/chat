@@ -7,7 +7,7 @@ import './ChatPage.css';
 const ChatPage = () => {
   const { t, isRTL } = useLanguage();
 
-  // Generate or get userId
+  // ✅ إنشاء أو استرجاع userId
   const getUserId = () => {
     let uid = localStorage.getItem("chatUserId");
     if (!uid) {
@@ -16,10 +16,9 @@ const ChatPage = () => {
     }
     return uid;
   };
-
   const userId = getUserId();
 
-  // Session ID persistence
+  // ✅ Session ID ثابت
   const [sessionId, setSessionId] = useState(() => {
     const existing = localStorage.getItem('sessionId');
     if (existing) return existing;
@@ -28,7 +27,7 @@ const ChatPage = () => {
     return newId;
   });
 
-  // State
+  // ✅ الحالة العامة
   const [conversations, setConversations] = useState(() => {
     const saved = localStorage.getItem('chatConversations');
     return saved ? JSON.parse(saved) : [];
@@ -44,7 +43,20 @@ const ChatPage = () => {
   const textareaRef = useRef(null);
   const sidebarRef = useRef(null);
 
-  // Auto-resize textarea
+  // ✅ دالة تحويل base64 إلى Blob (مطلوبة للإرسال عبر FormData)
+  function dataURLtoBlob(dataURL) {
+    const arr = dataURL.split(',');
+    const mime = arr[0].match(/:(.*?);/)[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  }
+
+  // ✅ جعل حقل الكتابة يتمدد تلقائيًا
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -52,7 +64,7 @@ const ChatPage = () => {
     }
   }, [message]);
 
-  // Load conversation
+  // ✅ تحميل المحادثة
   const loadConversation = (conversationId) => {
     const conversation = conversations.find(conv => conv.id === conversationId);
     if (conversation) {
@@ -61,7 +73,7 @@ const ChatPage = () => {
     }
   };
 
-  // Create new conversation
+  // ✅ إنشاء محادثة جديدة
   const createNewConversation = () => {
     const newSessionId = uuidv4();
     const newConversation = {
@@ -77,45 +89,42 @@ const ChatPage = () => {
       }],
       createdAt: new Date()
     };
-    const updatedConversations = [newConversation, ...conversations];
-    setConversations(updatedConversations);
-    localStorage.setItem('chatConversations', JSON.stringify(updatedConversations));
+    const updated = [newConversation, ...conversations];
+    setConversations(updated);
+    localStorage.setItem('chatConversations', JSON.stringify(updated));
     setCurrentConversationId(newConversation.id);
     setSessionId(newSessionId);
     localStorage.setItem('sessionId', newSessionId);
     setMessages(newConversation.messages);
   };
 
-  // Delete conversation
+  // ✅ حذف محادثة
   const deleteConversation = (conversationId) => {
-    const updatedConversations = conversations.filter(conv => conv.id !== conversationId);
-    setConversations(updatedConversations);
-    localStorage.setItem('chatConversations', JSON.stringify(updatedConversations));
+    const updated = conversations.filter(conv => conv.id !== conversationId);
+    setConversations(updated);
+    localStorage.setItem('chatConversations', JSON.stringify(updated));
     if (currentConversationId === conversationId) {
-      if (updatedConversations.length > 0) {
-        loadConversation(updatedConversations[0].id);
-      } else {
-        createNewConversation();
-      }
+      if (updated.length > 0) loadConversation(updated[0].id);
+      else createNewConversation();
     }
   };
 
-  // Update conversation title
+  // ✅ تحديث عنوان المحادثة
   const updateConversationTitle = (conversationId, title) => {
-    const updatedConversations = conversations.map(conv =>
+    const updated = conversations.map(conv =>
       conv.id === conversationId ? { ...conv, title } : conv
     );
-    setConversations(updatedConversations);
-    localStorage.setItem('chatConversations', JSON.stringify(updatedConversations));
+    setConversations(updated);
+    localStorage.setItem('chatConversations', JSON.stringify(updated));
   };
 
-  // Initialize
+  // ✅ تهيئة أول محادثة
   useEffect(() => {
     if (conversations.length === 0) createNewConversation();
     else if (!currentConversationId) loadConversation(conversations[0].id);
   }, []);
 
-  // Hide sidebar on mobile when clicking outside
+  // ✅ إغلاق الشريط الجانبي على الجوال عند النقر خارج
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (window.innerWidth <= 768 && isSidebarOpen && sidebarRef.current && !sidebarRef.current.contains(event.target)) {
@@ -126,11 +135,10 @@ const ChatPage = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isSidebarOpen]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-  useEffect(() => scrollToBottom(), [messages]);
+  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  useEffect(scrollToBottom, [messages]);
 
+  // ✅ إدخال متعدد الأسطر مثل ChatGPT
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -138,7 +146,7 @@ const ChatPage = () => {
     }
   };
 
-  // Handle file upload
+  // ✅ رفع الملفات
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
@@ -163,19 +171,16 @@ const ChatPage = () => {
           fileType: isImage ? 'image' : 'document',
           fileData: reader.result,
         });
-
         if (newFiles.length === files.length) {
           setUploadedFiles((prev) => [...prev, ...newFiles]);
         }
       };
-
       reader.readAsDataURL(file);
     });
-
     e.target.value = '';
   };
 
-  // ✅ Send message and files
+  // ✅ إرسال الرسالة (FormData)
   const handleSend = async () => {
     if (!message && uploadedFiles.length === 0) return;
     setIsLoading(true);
@@ -210,41 +215,17 @@ const ChatPage = () => {
         formData.append("data", blob, file.fileName);
       });
 
-      await fetch('https://saudg.app.n8n.cloud/webhook/chat-webhook', {
-        method: 'POST',
-        body: formData,
-      });
-
-      // helper
-      function dataURLtoBlob(dataurl) {
-        const arr = dataurl.split(',');
-        const mime = arr[0].match(/:(.*?);/)[1];
-        const bstr = atob(arr[1]);
-        let n = bstr.length;
-        const u8arr = new Uint8Array(n);
-        while (n--) {
-          u8arr[n] = bstr.charCodeAt(n);
-        }
-        return new Blob([u8arr], { type: mime });
-      }
-
       const response = await fetch('https://saudg.app.n8n.cloud/webhook/chat-webhook', {
         method: 'POST',
         body: formData,
       });
 
       let replyText = "";
-      const clone = response.clone();
-
       try {
         const data = await response.json();
         replyText = data.message?.content || data.text || data.reply || JSON.stringify(data);
       } catch {
-        try {
-          replyText = await clone.text();
-        } catch {
-          replyText = "⚠️ Error reading response.";
-        }
+        replyText = await response.text();
       }
 
       const botResponse = {
@@ -270,21 +251,18 @@ const ChatPage = () => {
       console.error("❌ Fetch error:", error);
       const errorMessage = {
         id: messages.length + 2,
-        text: t('errorMessage') || "An error occurred. Please try again.",
+        text: "Error sending message.",
         isUser: false,
         sender: t('bot'),
-        timestamp: new Date()
+        timestamp: new Date(),
       };
-      const finalMessages = [...updatedMessages, errorMessage];
-      setMessages(finalMessages);
+      setMessages([...updatedMessages, errorMessage]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const formatTime = (date) =>
-    date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
+  const formatTime = (date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const formatDate = (date) => {
     const today = new Date();
     const yesterday = new Date(today);
@@ -294,9 +272,10 @@ const ChatPage = () => {
     return date.toLocaleDateString();
   };
 
+  // ✅ واجهة المستخدم
   return (
     <div className={`chat-page ${isRTL ? 'rtl' : 'ltr'}`}>
-      {/* Sidebar */}
+      {/* الشريط الجانبي */}
       <div ref={sidebarRef} className={`chat-sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
         <div className="sidebar-header">
           <button className="new-chat-btn" onClick={createNewConversation}>
@@ -308,21 +287,21 @@ const ChatPage = () => {
         </div>
 
         <div className="conversations-list">
-          {conversations.map((conversation) => (
+          {conversations.map((conv) => (
             <div
-              key={conversation.id}
-              className={`conversation-item ${currentConversationId === conversation.id ? 'active' : ''}`}
-              onClick={() => loadConversation(conversation.id)}
+              key={conv.id}
+              className={`conversation-item ${currentConversationId === conv.id ? 'active' : ''}`}
+              onClick={() => loadConversation(conv.id)}
             >
               <div className="conversation-content">
-                <div className="conversation-title">{conversation.title}</div>
-                <div className="conversation-date">{formatDate(conversation.createdAt)}</div>
+                <div className="conversation-title">{conv.title}</div>
+                <div className="conversation-date">{formatDate(conv.createdAt)}</div>
               </div>
               <button
                 className="delete-conversation-btn"
                 onClick={(e) => {
                   e.stopPropagation();
-                  deleteConversation(conversation.id);
+                  deleteConversation(conv.id);
                 }}
                 title="Delete conversation"
               >
@@ -333,7 +312,7 @@ const ChatPage = () => {
         </div>
       </div>
 
-      {/* Chat Main */}
+      {/* منطقة الدردشة */}
       <div className={`chat-main ${isSidebarOpen ? 'with-sidebar' : 'full-width'}`}>
         <div className="chat-header">
           <button className="mobile-sidebar-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
@@ -349,11 +328,9 @@ const ChatPage = () => {
                 {msg.text && <div className="message-text">{formatMessageText(msg.text)}</div>}
                 {msg.files && msg.files.map((file, index) => (
                   <div key={index}>
-                    {file.fileType === 'image' ? (
-                      <img src={file.fileData} alt="uploaded" className="chat-image" />
-                    ) : (
-                      <div className="file-message">📎 {file.fileName}</div>
-                    )}
+                    {file.fileType === 'image'
+                      ? <img src={file.fileData} alt={file.fileName} className="chat-image" />
+                      : <div className="file-message">📎 {file.fileName}</div>}
                   </div>
                 ))}
                 <div className="message-time">{formatTime(msg.timestamp)}</div>
@@ -370,23 +347,16 @@ const ChatPage = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input area */}
+        {/* منطقة الإدخال */}
         <div className="chat-input-area">
           {uploadedFiles.length > 0 && (
             <div className="uploaded-preview">
               {uploadedFiles.map((file, index) => (
                 <div key={index} className="preview-item">
-                  {file.fileType === 'image' ? (
-                    <img src={file.fileData} alt={file.fileName} className="preview-image" />
-                  ) : (
-                    <div className="preview-doc">📎 {file.fileName}</div>
-                  )}
-                  <button
-                    className="remove-file"
-                    onClick={() => setUploadedFiles(prev => prev.filter((_, i) => i !== index))}
-                  >
-                    ✕
-                  </button>
+                  {file.fileType === 'image'
+                    ? <img src={file.fileData} alt={file.fileName} className="preview-image" />
+                    : <div className="preview-doc">📎 {file.fileName}</div>}
+                  <button className="remove-file" onClick={() => setUploadedFiles(prev => prev.filter((_, i) => i !== index))}>✕</button>
                 </div>
               ))}
             </div>
