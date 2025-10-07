@@ -369,6 +369,34 @@
   40% { transform: scale(1); opacity: 1; }
 }
 
+/* ====== ACTION BUTTONS (NEW) ====== */
+.message-actions {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.action-button {
+  background-color: #2563eb;
+  color: #ffffff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.action-button:hover {
+  background-color: #1e40af;
+  transform: translateY(-1px);
+}
+
+.action-button:active {
+  transform: scale(0.97);
+}
+
 /* ====== DARK MODE ====== */
 @media (prefers-color-scheme: dark) {
   .chat-main { background: #1a1a1a; }
@@ -380,4 +408,13 @@
   .input-container { background: #404040; border-color: #4d4d4f; }
   .chat-input { color: #ececf1; }
   .chat-input::placeholder { color: #9ca3af; }
+
+  /* Dark mode buttons */
+  .action-button {
+    background-color: #3b82f6;
+    color: #fff;
+  }
+  .action-button:hover {
+    background-color: #1e3a8a;
+  }
 }
