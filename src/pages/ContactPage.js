@@ -180,7 +180,7 @@ const ContactPage = () => {
             prev.map(m => (m.id === botMessageId ? { ...m, text: replyText } : m))
           );
         }
-      }, 5);
+      }, 10);
     } catch (error) {
       console.error("❌ Fetch error:", error);
       setMessages(prev => [
