@@ -1,11 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 import { formatMessageText } from '../utils/textUtils';
+import { trackChatUsage } from '../utils/usageTracker';
 import './ChatPage.css';
 
 const ChatPage = () => {
   const { t, isRTL } = useLanguage();
+  const { user } = useAuth();
 
   // ✅ إنشاء أو استرجاع userId
   const getUserId = () => {
@@ -184,6 +187,9 @@ const ChatPage = () => {
   const handleSend = async () => {
     if (!message && uploadedFiles.length === 0) return;
     setIsLoading(true);
+
+    // Track usage
+    await trackChatUsage(userId, user);
 
     const newMessage = {
       id: messages.length + 1,
