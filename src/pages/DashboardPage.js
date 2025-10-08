@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getUsageStats, getAllUsers } from '../utils/usageTracker';
 import './DashboardPage.css';
 
 const DashboardPage = () => {
@@ -22,10 +23,12 @@ const DashboardPage = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/usage');
-      if (!response.ok) throw new Error('Failed to fetch statistics');
-      const data = await response.json();
-      setStats(data);
+      const data = await getUsageStats();
+      if (data) {
+        setStats(data);
+      } else {
+        throw new Error('No data received');
+      }
     } catch (err) {
       console.error('Error fetching stats:', err);
       setError('Failed to load statistics');
@@ -34,10 +37,8 @@ const DashboardPage = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('/api/usage/users');
-      if (!response.ok) throw new Error('Failed to fetch users');
-      const data = await response.json();
-      setUsers(data);
+      const data = await getAllUsers();
+      setUsers(data || []);
     } catch (err) {
       console.error('Error fetching users:', err);
       setError('Failed to load user data');

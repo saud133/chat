@@ -1,0 +1,36 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "build"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ],
+  "functions": {
+    "api/usage.js": {
+      "maxDuration": 10
+    },
+    "api/usage/users.js": {
+      "maxDuration": 10
+    },
+    "api/health.js": {
+      "maxDuration": 5
+    }
+  },
+  "env": {
+    "NODE_ENV": "production"
+  }
+}

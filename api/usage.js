@@ -1,175 +1,142 @@
-// API endpoint for chat usage tracking
-// This file should be deployed to your backend/server
+// Vercel serverless function for usage statistics
+// This file handles both GET and POST requests to /api/usage
 
-const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+// Mock data for immediate testing (replace with real database in production)
+let mockUsers = [
+  {
+    user_id: 'user-abc123def',
+    username: 'John Doe',
+    email: 'john@example.com',
+    is_registered: true,
+    usage_count: 15,
+    first_used_at: '2023-12-01T10:00:00Z',
+    last_used_at: '2023-12-21T15:30:00Z'
+  },
+  {
+    user_id: 'user-xyz789ghi',
+    username: 'Guest',
+    email: null,
+    is_registered: false,
+    usage_count: 8,
+    first_used_at: '2023-12-15T14:20:00Z',
+    last_used_at: '2023-12-21T12:45:00Z'
+  },
+  {
+    user_id: 'user-mno456pqr',
+    username: 'Jane Smith',
+    email: 'jane@example.com',
+    is_registered: true,
+    usage_count: 23,
+    first_used_at: '2023-11-28T09:15:00Z',
+    last_used_at: '2023-12-21T16:20:00Z'
+  },
+  {
+    user_id: 'user-guest999',
+    username: 'Guest User',
+    email: null,
+    is_registered: false,
+    usage_count: 5,
+    first_used_at: '2023-12-20T11:30:00Z',
+    last_used_at: '2023-12-21T09:15:00Z'
+  }
+];
 
-const router = express.Router();
-
-// Initialize database
-const dbPath = path.join(__dirname, '../database/chat_usage.db');
-const db = new sqlite3.Database(dbPath);
-
-// Initialize database tables
-db.serialize(() => {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS chat_usage (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id TEXT NOT NULL UNIQUE,
-      username TEXT,
-      email TEXT,
-      is_registered BOOLEAN DEFAULT FALSE,
-      usage_count INTEGER DEFAULT 0,
-      first_used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      last_used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
+// Calculate statistics from mock data
+const calculateStats = () => {
+  const totalUsage = mockUsers.reduce((sum, user) => sum + user.usage_count, 0);
+  const totalUsers = mockUsers.length;
+  const registeredUsers = mockUsers.filter(user => user.is_registered).length;
+  const guestUsers = mockUsers.filter(user => !user.is_registered).length;
   
-  db.run(`CREATE INDEX IF NOT EXISTS idx_user_id ON chat_usage(user_id)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_is_registered ON chat_usage(is_registered)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_last_used_at ON chat_usage(last_used_at)`);
-});
+  // Recent activity (last 24 hours)
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const recentActivity = mockUsers.filter(user => 
+    new Date(user.last_used_at) > oneDayAgo
+  ).length;
 
-// POST /api/usage - Track chat usage
-router.post('/', (req, res) => {
-  const { userId, username, email, isRegistered } = req.body;
-  
-  if (!userId) {
-    return res.status(400).json({ error: 'userId is required' });
+  return {
+    total_usage: totalUsage,
+    total_users: totalUsers,
+    registered_users: registeredUsers,
+    guest_users: guestUsers,
+    recent_activity: recentActivity
+  };
+};
+
+export default function handler(req, res) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
   }
 
-  const now = new Date().toISOString();
-  
-  // Check if user exists
-  db.get('SELECT * FROM chat_usage WHERE user_id = ?', [userId], (err, row) => {
-    if (err) {
-      console.error('Database error:', err);
-      return res.status(500).json({ error: 'Database error' });
-    }
-
-    if (row) {
-      // Update existing user
-      const updateQuery = `
-        UPDATE chat_usage 
-        SET usage_count = usage_count + 1,
-            last_used_at = ?,
-            username = COALESCE(?, username),
-            email = COALESCE(?, email),
-            is_registered = ?
-        WHERE user_id = ?
-      `;
+  try {
+    if (req.method === 'GET') {
+      // GET /api/usage - Return usage statistics
+      const stats = calculateStats();
+      const topUsers = mockUsers
+        .sort((a, b) => b.usage_count - a.usage_count)
+        .slice(0, 10);
       
-      db.run(updateQuery, [now, username, email, isRegistered, userId], function(err) {
-        if (err) {
-          console.error('Update error:', err);
-          return res.status(500).json({ error: 'Failed to update usage' });
-        }
+      res.status(200).json({
+        ...stats,
+        topUsers: topUsers
+      });
+    } else if (req.method === 'POST') {
+      // POST /api/usage - Track new usage
+      const { userId, username, email, isRegistered } = req.body;
+      
+      if (!userId) {
+        return res.status(400).json({ error: 'userId is required' });
+      }
+
+      // Find existing user
+      const existingUserIndex = mockUsers.findIndex(user => user.user_id === userId);
+      
+      if (existingUserIndex !== -1) {
+        // Update existing user
+        mockUsers[existingUserIndex].usage_count += 1;
+        mockUsers[existingUserIndex].last_used_at = new Date().toISOString();
+        if (username) mockUsers[existingUserIndex].username = username;
+        if (email) mockUsers[existingUserIndex].email = email;
+        mockUsers[existingUserIndex].is_registered = isRegistered || false;
         
-        res.json({ 
+        res.status(200).json({ 
           success: true, 
           message: 'Usage updated',
-          usageCount: row.usage_count + 1
+          usageCount: mockUsers[existingUserIndex].usage_count
         });
-      });
-    } else {
-      // Create new user
-      const insertQuery = `
-        INSERT INTO chat_usage (user_id, username, email, is_registered, usage_count, first_used_at, last_used_at)
-        VALUES (?, ?, ?, ?, 1, ?, ?)
-      `;
-      
-      db.run(insertQuery, [userId, username, email, isRegistered, now, now], function(err) {
-        if (err) {
-          console.error('Insert error:', err);
-          return res.status(500).json({ error: 'Failed to create usage record' });
-        }
+      } else {
+        // Create new user
+        const newUser = {
+          user_id: userId,
+          username: username || 'Guest',
+          email: email || null,
+          is_registered: isRegistered || false,
+          usage_count: 1,
+          first_used_at: new Date().toISOString(),
+          last_used_at: new Date().toISOString()
+        };
         
-        res.json({ 
+        mockUsers.push(newUser);
+        
+        res.status(200).json({ 
           success: true, 
           message: 'Usage created',
           usageCount: 1
         });
-      });
+      }
+    } else {
+      res.status(405).json({ error: 'Method not allowed' });
     }
-  });
-});
-
-// GET /api/usage - Get usage statistics
-router.get('/', (req, res) => {
-  const queries = [
-    // Total usage count
-    'SELECT SUM(usage_count) as total_usage FROM chat_usage',
-    // Total users
-    'SELECT COUNT(*) as total_users FROM chat_usage',
-    // Registered users
-    'SELECT COUNT(*) as registered_users FROM chat_usage WHERE is_registered = TRUE',
-    // Guest users
-    'SELECT COUNT(*) as guest_users FROM chat_usage WHERE is_registered = FALSE',
-    // Recent activity (last 24 hours)
-    'SELECT COUNT(*) as recent_activity FROM chat_usage WHERE last_used_at > datetime("now", "-1 day")',
-    // Top users by usage
-    'SELECT user_id, username, email, is_registered, usage_count, last_used_at FROM chat_usage ORDER BY usage_count DESC LIMIT 10'
-  ];
-
-  let completed = 0;
-  const results = {};
-
-  queries.forEach((query, index) => {
-    if (index < 5) {
-      // Statistics queries
-      db.get(query, (err, row) => {
-        if (err) {
-          console.error('Query error:', err);
-          return res.status(500).json({ error: 'Database query error' });
-        }
-        
-        const key = Object.keys(row)[0];
-        results[key] = row[key];
-        
-        completed++;
-        if (completed === 5) {
-          // Get top users
-          db.all(queries[5], (err, rows) => {
-            if (err) {
-              console.error('Top users query error:', err);
-              return res.status(500).json({ error: 'Database query error' });
-            }
-            
-            results.topUsers = rows;
-            res.json(results);
-          });
-        }
-      });
-    }
-  });
-});
-
-// GET /api/usage/users - Get all users with their usage data
-router.get('/users', (req, res) => {
-  const query = `
-    SELECT 
-      user_id,
-      COALESCE(username, 'Guest') as username,
-      email,
-      is_registered,
-      usage_count,
-      first_used_at,
-      last_used_at
-    FROM chat_usage 
-    ORDER BY last_used_at DESC
-  `;
-  
-  db.all(query, (err, rows) => {
-    if (err) {
-      console.error('Query error:', err);
-      return res.status(500).json({ error: 'Database query error' });
-    }
-    
-    res.json(rows);
-  });
-});
-
-module.exports = router;
+  } catch (error) {
+    console.error('API Error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}

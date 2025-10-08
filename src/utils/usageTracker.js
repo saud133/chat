@@ -1,6 +1,16 @@
 // Usage tracking utility
 // This utility tracks chat usage and sends data to the API
 
+// Dynamic API base URL for both local and production environments
+const getApiBaseUrl = () => {
+  // In browser environment, use relative URLs for same-origin requests
+  if (typeof window !== 'undefined') {
+    return '';
+  }
+  // For server-side rendering or testing
+  return process.env.REACT_APP_API_BASE_URL || '';
+};
+
 export const trackChatUsage = async (userId, userData = null) => {
   try {
     // Determine if user is registered based on userData
@@ -15,8 +25,8 @@ export const trackChatUsage = async (userId, userData = null) => {
       isRegistered
     };
 
-    // Send usage data to API
-    const response = await fetch('/api/usage', {
+    const apiBase = getApiBaseUrl();
+    const response = await fetch(`${apiBase}/api/usage`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -37,7 +47,8 @@ export const trackChatUsage = async (userId, userData = null) => {
 
 export const getUsageStats = async () => {
   try {
-    const response = await fetch('/api/usage');
+    const apiBase = getApiBaseUrl();
+    const response = await fetch(`${apiBase}/api/usage`);
     if (!response.ok) throw new Error('Failed to fetch usage stats');
     return await response.json();
   } catch (error) {
@@ -48,7 +59,8 @@ export const getUsageStats = async () => {
 
 export const getAllUsers = async () => {
   try {
-    const response = await fetch('/api/usage/users');
+    const apiBase = getApiBaseUrl();
+    const response = await fetch(`${apiBase}/api/usage/users`);
     if (!response.ok) throw new Error('Failed to fetch users');
     return await response.json();
   } catch (error) {
