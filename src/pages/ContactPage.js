@@ -6,61 +6,39 @@ import { formatMessageText } from '../utils/textUtils';
 const ContactPage = () => {
   const { t, isRTL } = useLanguage();
 
+  // Sidebar
   const sidebarRef = useRef(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [conversations, setConversations] = useState([]);
-  const [currentConversationId, setCurrentConversationId] = useState(null);
-  const [messages, setMessages] = useState([]);
+
+  // Conversations + Messages
+  const [conversations, setConversations] = useState(() => {
+    const saved = localStorage.getItem("conversations");
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [currentConversationId, setCurrentConversationId] = useState(() => {
+    const saved = localStorage.getItem("conversations");
+    const parsed = saved ? JSON.parse(saved) : [];
+    return parsed.length ? parsed[0].id : null;
+  });
+  const [messages, setMessages] = useState(() => {
+    const saved = localStorage.getItem("conversations");
+    const parsed = saved ? JSON.parse(saved) : [];
+    return parsed.length ? (parsed[0].messages || []) : [];
+  });
+
   const [isLoading, setIsLoading] = useState(false);
 
-  // ✅ Load saved conversations
-  useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem("conversations") || "[]");
-    setConversations(saved);
-    if (saved.length > 0) {
-      setCurrentConversationId(saved[0].id);
-      setMessages(saved[0].messages || []);
-    }
-  }, []);
-
-  // ✅ Save every update
+  // Persist conversations
   useEffect(() => {
     localStorage.setItem("conversations", JSON.stringify(conversations));
   }, [conversations]);
 
-  // ✅ Create / Load / Delete conversation
-  const createNewConversation = () => {
-    const newConv = {
-      id: Date.now(),
-      title: `Conversation ${conversations.length + 1}`,
-      createdAt: new Date().toISOString(),
-      messages: []
-    };
-    setConversations([newConv, ...conversations]);
-    setCurrentConversationId(newConv.id);
-    setMessages([]);
-  };
-
-  const loadConversation = (id) => {
-    setCurrentConversationId(id);
-    const conv = conversations.find(c => c.id === id);
-    setMessages(conv ? conv.messages : []);
-  };
-
-  const deleteConversation = (id) => {
-    const updated = conversations.filter(c => c.id !== id);
-    setConversations(updated);
-    if (currentConversationId === id) {
-      setCurrentConversationId(updated.length ? updated[0].id : null);
-      setMessages(updated.length ? updated[0].messages : []);
-    }
-  };
-
-  // ✅ Helpers
+  // Helpers
   const formatDate = (dateString) => new Date(dateString).toLocaleDateString();
-  const formatTime = (date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const formatTime = (date) =>
+    new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  // ✅ Generate / store userId
+  // Generate / store userId
   const getUserId = () => {
     let uid = localStorage.getItem("chatUserId");
     if (!uid) {
@@ -71,14 +49,19 @@ const ContactPage = () => {
   };
   const userId = getUserId();
 
-  // ✅ Input states
+  // Input / Files
   const [inputValue, setInputValue] = useState('');
-  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploadedFiles, setUploadedFiles] = useState([]); // [{file, previewUrl, kind:'image'|'file'}]
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
-  useEffect(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), [messages]);
+  // Scroll to bottom
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+  useEffect(scrollToBottom, [messages]);
 
+  // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -86,11 +69,60 @@ const ContactPage = () => {
     }
   }, [inputValue]);
 
+  // RTL/LTR detector
   const detectDirection = (text) => /[\u0600-\u06FF]/.test(text) ? 'rtl' : 'ltr';
 
-  const handleFileChange = (e) => setSelectedFile(e.target.files[0]);
+  // Create new conversation
+  const createNewConversation = () => {
+    const newConv = {
+      id: Date.now(),
+      title: `Conversation ${conversations.length + 1}`,
+      createdAt: new Date().toISOString(),
+      messages: []
+    };
+    const updated = [newConv, ...conversations];
+    setConversations(updated);
+    setCurrentConversationId(newConv.id);
+    setMessages([]);
+  };
 
-  // ✅ Handle button actions (from bot messages)
+  // Load conversation
+  const loadConversation = (id) => {
+    setCurrentConversationId(id);
+    const conv = conversations.find(c => c.id === id);
+    setMessages(conv ? conv.messages : []);
+  };
+
+  // Delete conversation
+  const deleteConversation = (id) => {
+    const updated = conversations.filter((c) => c.id !== id);
+    setConversations(updated);
+    if (currentConversationId === id) {
+      setCurrentConversationId(updated.length ? updated[0].id : null);
+      setMessages(updated.length ? updated[0].messages : []);
+    }
+  };
+
+  // File selection (multiple)
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const items = files.map(f => ({
+      file: f,
+      previewUrl: f.type.startsWith("image/") ? URL.createObjectURL(f) : null,
+      kind: f.type.startsWith("image/") ? "image" : "file",
+      name: f.name
+    }));
+    setUploadedFiles(prev => [...prev, ...items]);
+    // reset input
+    e.target.value = null;
+  };
+
+  const removeUploadedFile = (index) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Actions click (from bot)
   const handleActionClick = async (action) => {
     if (action.type === 'button' && action.action === 'send_email_request') {
       try {
@@ -103,47 +135,110 @@ const ContactPage = () => {
             note: "User requested consultant verification"
           }),
         });
-        const result = await res.text();
-        alert("📧 تم إرسال الطلب للمستشار بنجاح.\n\n" + result);
+        const resultText = await res.text();
+
+        // Add system confirmation as a bot message in the chat
+        const confirmMsg = {
+          id: Date.now(),
+          text: "📧 تم إرسال الطلب للمستشار للتأكد من نظامية وصحة الرد.",
+          isUser: false,
+          sender: t('bot'),
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, confirmMsg]);
+        setConversations(prev =>
+          prev.map(c =>
+            c.id === currentConversationId
+              ? { ...c, messages: [...(c.messages || []), confirmMsg] }
+              : c
+          )
+        );
+
+        // (Optional) you can log resultText if needed
+        console.log("send_email_request:", resultText);
       } catch (err) {
         console.error("❌ Error sending action:", err);
-        alert("حدث خطأ أثناء إرسال الطلب للمستشار.");
+        const failMsg = {
+          id: Date.now(),
+          text: "❌ حدث خطأ أثناء إرسال الطلب للمستشار.",
+          isUser: false,
+          sender: t('bot'),
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, failMsg]);
+        setConversations(prev =>
+          prev.map(c =>
+            c.id === currentConversationId
+              ? { ...c, messages: [...(c.messages || []), failMsg] }
+              : c
+          )
+        );
       }
     }
   };
 
-  // ✅ Send message
+  // Send message
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (inputValue.trim() === '' && !selectedFile) return;
+    if (inputValue.trim() === '' && uploadedFiles.length === 0) return;
     setIsLoading(true);
 
     let convId = currentConversationId;
+    // Create conversation if none
     if (!convId) {
       const title = inputValue.trim().slice(0, 30) || "New Chat";
-      const newConv = { id: Date.now(), title, createdAt: new Date().toISOString(), messages: [] };
+      const newConv = {
+        id: Date.now(),
+        title,
+        createdAt: new Date().toISOString(),
+        messages: []
+      };
       setConversations([newConv, ...conversations]);
       convId = newConv.id;
       setCurrentConversationId(convId);
       setMessages([]);
     }
 
-    const newMessage = {
+    // Create user message
+    const userMsg = {
       id: Date.now(),
       text: inputValue,
-      file: selectedFile,
+      files: uploadedFiles, // keep list for rendering
       isUser: true,
       sender: userId,
       timestamp: new Date()
     };
-    setMessages(prev => [...prev, newMessage]);
-    setInputValue('');
-    setSelectedFile(null);
+    setMessages(prev => [...prev, userMsg]);
 
+    // Save to conversation
+    setConversations(prev =>
+      prev.map(c => {
+        if (c.id === convId) {
+          const updatedMessages = [...(c.messages || []), userMsg];
+          // set title from first message
+          const newTitle = c.messages?.length === 0
+            ? (inputValue.trim().slice(0, 30) || c.title)
+            : c.title;
+          return { ...c, title: newTitle, messages: updatedMessages };
+        }
+        return c;
+      })
+    );
+
+    // reset input
+    setInputValue('');
+    setUploadedFiles([]);
+
+    // Prepare formData
     const formData = new FormData();
     formData.append('userId', userId);
-    formData.append('message', inputValue);
-    if (selectedFile) formData.append('file', selectedFile, selectedFile.name);
+    formData.append('message', userMsg.text || "");
+
+    // append multiple files
+    userMsg.files.forEach((fObj, idx) => {
+      const key = fObj.kind === 'image' ? `ImageId_${Date.now()}_${idx}` : `FileId_${Date.now()}_${idx}`;
+      formData.append(key, fObj.file, fObj.name);
+    });
 
     try {
       const response = await fetch("https://saudg.app.n8n.cloud/webhook/chat-webhook", {
@@ -151,22 +246,37 @@ const ContactPage = () => {
         body: formData,
       });
 
-      const data = await response.json().catch(() => ({}));
-      const replyText = data.reply || data.text || data.final_markdown || JSON.stringify(data);
-      const actions = data.actions || [];
+      // Try JSON first
+      let parsed = {};
+      let replyText = "";
+      let actions = [];
+      try {
+        parsed = await response.json();
+        replyText = parsed.reply || parsed.text || parsed.final_markdown || JSON.stringify(parsed);
+        actions = Array.isArray(parsed.actions) ? parsed.actions : [];
+      } catch {
+        // fallback text
+        const asText = await response.text();
+        replyText = asText || " ";
+        actions = [];
+      }
 
+      // Create bot placeholder (typing)
       const botMessageId = Date.now();
       const botResponse = {
         id: botMessageId,
         text: "",
         actions,
+        showActions: false, // 👈 لا نعرض الأزرار إلا بعد اكتمال الكتابة
         isUser: false,
         sender: t('bot'),
         timestamp: new Date()
       };
       setMessages(prev => [...prev, botResponse]);
 
+      // typing effect
       let index = 0;
+      const typingSpeed = 10; // keep the same effect speed as you prefer
       const interval = setInterval(() => {
         if (index < replyText.length) {
           const partial = replyText.slice(0, index + 1);
@@ -176,23 +286,49 @@ const ContactPage = () => {
           index++;
         } else {
           clearInterval(interval);
+          // finalize text and then show actions
           setMessages(prev =>
-            prev.map(m => (m.id === botMessageId ? { ...m, text: replyText } : m))
+            prev.map(m =>
+              m.id === botMessageId ? { ...m, text: replyText, showActions: true } : m
+            )
+          );
+          // persist to conversation
+          setConversations(prev =>
+            prev.map(c =>
+              c.id === convId
+                ? {
+                    ...c,
+                    messages: (c.messages || []).map(m =>
+                      m.id === botMessageId ? { ...m, text: replyText, showActions: true } : m
+                    )
+                  }
+                : c
+            )
           );
         }
-      }, 20);
+      }, typingSpeed);
+
+      // also persist placeholder (initially empty text)
+      setConversations(prev =>
+        prev.map(c =>
+          c.id === convId ? { ...c, messages: [...(c.messages || []), botResponse] } : c
+        )
+      );
     } catch (error) {
       console.error("❌ Fetch error:", error);
-      setMessages(prev => [
-        ...prev,
-        {
-          id: Date.now(),
-          text: "❌ حدث خطأ أثناء الاتصال بالخادم",
-          isUser: false,
-          sender: t('bot'),
-          timestamp: new Date()
-        }
-      ]);
+      const errorMessage = {
+        id: Date.now(),
+        text: "❌ حدث خطأ أثناء الاتصال بالخادم",
+        isUser: false,
+        sender: t('bot'),
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      setConversations(prev =>
+        prev.map(c =>
+          c.id === convId ? { ...c, messages: [...(c.messages || []), errorMessage] } : c
+        )
+      );
     }
 
     setIsLoading(false);
@@ -200,7 +336,7 @@ const ContactPage = () => {
 
   return (
     <div className={`contact-page ${isRTL ? 'rtl' : 'ltr'}`}>
-      {/* ===== Sidebar ===== */}
+      {/* Sidebar */}
       <div ref={sidebarRef} className={`chat-sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
         <div className="sidebar-header">
           <button className="new-chat-btn" onClick={createNewConversation}>
@@ -212,17 +348,23 @@ const ContactPage = () => {
         </div>
 
         <div className="conversations-list">
-          {conversations.map(c => (
+          {conversations.map(conversation => (
             <div
-              key={c.id}
-              className={`conversation-item ${currentConversationId === c.id ? 'active' : ''}`}
-              onClick={() => loadConversation(c.id)}
+              key={conversation.id}
+              className={`conversation-item ${currentConversationId === conversation.id ? 'active' : ''}`}
+              onClick={() => loadConversation(conversation.id)}
             >
               <div className="conversation-content">
-                <div className="conversation-title">{c.title}</div>
-                <div className="conversation-date">{formatDate(c.createdAt)}</div>
+                <div className="conversation-title">{conversation.title}</div>
+                <div className="conversation-date">{formatDate(conversation.createdAt)}</div>
               </div>
-              <button className="delete-conversation-btn" onClick={(e) => { e.stopPropagation(); deleteConversation(c.id); }}>
+              <button
+                className="delete-conversation-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteConversation(conversation.id);
+                }}
+              >
                 🗑️
               </button>
             </div>
@@ -230,7 +372,7 @@ const ContactPage = () => {
         </div>
       </div>
 
-      {/* ===== Chat Main ===== */}
+      {/* Main Chat */}
       <div className={`chat-main ${isSidebarOpen ? 'with-sidebar' : 'full-width'}`}>
         <div className="chat-header">
           <button className="mobile-sidebar-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>☰</button>
@@ -253,8 +395,23 @@ const ContactPage = () => {
                   </div>
                 )}
 
-                {/* ✅ Display action buttons if exist */}
-                {message.actions && message.actions.length > 0 && (
+                {/* Files inside message (for user messages) */}
+                {Array.isArray(message.files) && message.files.length > 0 && (
+                  <div className="message-files">
+                    {message.files.map((f, idx) => (
+                      <div key={idx}>
+                        {f.kind === "image" ? (
+                          <img src={f.previewUrl} alt={f.name} className="chat-image" />
+                        ) : (
+                          <div className="file-message">📎 {f.name}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Actions AFTER typing only */}
+                {message.actions && message.actions.length > 0 && message.showActions && (
                   <div className="message-actions">
                     {message.actions.map((action, idx) => (
                       <button
@@ -268,12 +425,6 @@ const ContactPage = () => {
                   </div>
                 )}
 
-                {message.file && message.file.type.startsWith("image/") && (
-                  <img src={URL.createObjectURL(message.file)} alt="uploaded" className="chat-image" />
-                )}
-                {message.file && !message.file.type.startsWith("image/") && (
-                  <div className="file-message">📎 {message.file.name}</div>
-                )}
                 <div className="message-time">{formatTime(message.timestamp)}</div>
               </div>
             </div>
@@ -288,22 +439,26 @@ const ContactPage = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* ===== Input Area ===== */}
+        {/* Input Area */}
         <form className="chat-input-form" onSubmit={handleSendMessage}>
-          {selectedFile && (
-            <div className="file-preview">
-              {selectedFile.type.startsWith("image/") ? (
-                <img src={URL.createObjectURL(selectedFile)} alt="preview" className="preview-image" />
-              ) : (
-                <div className="preview-file">📎 {selectedFile.name}</div>
-              )}
-              <button type="button" className="remove-file" onClick={() => setSelectedFile(null)}>✕</button>
+          {uploadedFiles.length > 0 && (
+            <div className="uploaded-preview">
+              {uploadedFiles.map((f, idx) => (
+                <div key={idx} className="preview-item">
+                  {f.kind === "image" ? (
+                    <img src={f.previewUrl} alt={f.name} className="preview-image" />
+                  ) : (
+                    <div className="preview-file">📎 {f.name}</div>
+                  )}
+                  <button type="button" className="remove-file" onClick={() => removeUploadedFile(idx)}>✕</button>
+                </div>
+              ))}
             </div>
           )}
 
           <div className="input-container">
             <label htmlFor="file-upload" className="file-upload-btn">+</label>
-            <input id="file-upload" type="file" onChange={handleFileChange} style={{ display: "none" }} />
+            <input id="file-upload" type="file" multiple onChange={handleFileChange} style={{ display: "none" }} />
             <textarea
               ref={textareaRef}
               value={inputValue}
@@ -316,7 +471,7 @@ const ContactPage = () => {
                 textAlign: detectDirection(inputValue) === 'rtl' ? 'right' : 'left'
               }}
             />
-            <button type="submit" className="send-button" disabled={isLoading || (inputValue.trim() === '' && !selectedFile)}>
+            <button type="submit" className="send-button" disabled={isLoading || (inputValue.trim() === '' && uploadedFiles.length === 0)}>
               {t('send')}
             </button>
           </div>
