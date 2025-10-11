@@ -7,7 +7,6 @@ import HomePage from './pages/HomePage';
 import ContactPage from './pages/ContactPage';
 import ChatPage from './pages/ChatPage';
 import ServicesPage from './pages/ServicesPage';
-import DashboardPage from './pages/DashboardPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
 
@@ -40,13 +39,6 @@ function App() {
               <Layout>
                 <ServicesPage />
               </Layout>
-            } />
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <Layout>
-                  <DashboardPage />
-                </Layout>
-              </ProtectedRoute>
             } />
           </Routes>
         </Router>

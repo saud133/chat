@@ -60,11 +60,6 @@ const Header = () => {
               {t('chat')}
             </Link>
           )}
-          {isAuthenticated && (
-            <Link to="/dashboard" className="nav-link" onClick={closeMobileMenu}>
-              Dashboard
-            </Link>
-          )}
           <LanguageSwitcher />
           {isAuthenticated && (
             <div className="user-menu">
