@@ -374,7 +374,7 @@ const ContactPage = () => {
       <div ref={sidebarRef} className={`chat-sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
         <div className="sidebar-header">
           <button className="new-chat-btn" onClick={createNewConversation}>
-            <span className="plus-icon">+</span> New Chat
+            <span className="plus-icon">+</span> {t('newChat')}
           </button>
           <button className="sidebar-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
             <span className="arrow-icon">{isSidebarOpen ? '←' : '→'}</span>
@@ -465,28 +465,28 @@ const ContactPage = () => {
                     <button
                       className="toolbar-button"
                       onClick={() => handleCopyMessage(message.text)}
-                      title="Copy message"
+                      title={t('copyMessage')}
                     >
                       <Copy size={16} />
                     </button>
                     <button
                       className="toolbar-button"
                       onClick={() => handleLikeMessage(message.id)}
-                      title="Like message"
+                      title={t('likeMessage')}
                     >
                       <ThumbsUp size={16} />
                     </button>
                     <button
                       className="toolbar-button"
                       onClick={() => handleDislikeMessage(message.id)}
-                      title="Dislike message"
+                      title={t('dislikeMessage')}
                     >
                       <ThumbsDown size={16} />
                     </button>
                     <button
                       className="toolbar-button"
                       onClick={() => handleShareMessage(message.text)}
-                      title="Share message"
+                      title={t('shareMessage')}
                     >
                       <Share size={16} />
                     </button>

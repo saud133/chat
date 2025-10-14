@@ -38,6 +38,11 @@ const translations = {
     bot: 'Bot',
     welcomeMessage: 'Hello! How can I help you today?',
     errorMessage: '⚠️ Sorry, there was a problem connecting to the server.',
+    newChat: 'New Chat',
+    copyMessage: 'Copy message',
+    likeMessage: 'Like message',
+    dislikeMessage: 'Dislike message',
+    shareMessage: 'Share message',
     
     // Login Page
     loginTitle: 'Welcome Back',
@@ -115,6 +120,11 @@ const translations = {
     bot: 'البوت',
     welcomeMessage: 'مرحباً! كيف يمكنني مساعدتك اليوم؟',
     errorMessage: '⚠️ عذراً، حدثت مشكلة في الاتصال بالخادم.',
+    newChat: 'دردشة جديدة',
+    copyMessage: 'نسخ الرسالة',
+    likeMessage: 'إعجاب بالرسالة',
+    dislikeMessage: 'عدم إعجاب بالرسالة',
+    shareMessage: 'مشاركة الرسالة',
     
     // Login Page
     loginTitle: 'مرحباً بعودتك',
@@ -167,10 +177,22 @@ const translations = {
   }
 };
 
+// Function to detect browser language
+const detectBrowserLanguage = () => {
+  const browserLang = navigator.language || navigator.userLanguage;
+  return browserLang.startsWith('ar') ? 'ar' : 'en';
+};
+
 export const LanguageProvider = ({ children }) => {
   const [language, setLanguage] = useState(() => {
+    // First check if user has manually selected a language
     const savedLanguage = localStorage.getItem('selectedLanguage');
-    return savedLanguage || 'en';
+    if (savedLanguage) {
+      return savedLanguage;
+    }
+    
+    // If no manual selection, detect browser language
+    return detectBrowserLanguage();
   });
 
   const [isRTL, setIsRTL] = useState(language === 'ar');
