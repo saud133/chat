@@ -379,6 +379,46 @@
   background-color: #e5e7eb;
 }
 
+/* ====== FLOATING SCROLL BUTTON ====== */
+.scroll-to-bottom-btn {
+  position: fixed;
+  bottom: 100px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #2563eb;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease-in-out;
+  z-index: 1000;
+  opacity: 0.9;
+}
+
+.scroll-to-bottom-btn:hover {
+  background: #1d4ed8;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  opacity: 1;
+}
+
+.scroll-to-bottom-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Adjust for RTL layout */
+.rtl .scroll-to-bottom-btn {
+  right: auto;
+  left: 20px;
+}
+
 /* ====== TYPING INDICATOR ====== */
 .typing-indicator {
   display: flex;

@@ -55,12 +55,86 @@ const ContactPage = () => {
   const [uploadedFiles, setUploadedFiles] = useState([]); // [{file, previewUrl, kind:'image'|'file'}]
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+  const chatMessagesRef = useRef(null);
+
+  // Scroll behavior state
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [isUserScrolling, setIsUserScrolling] = useState(false);
+  const scrollTimeoutRef = useRef(null);
 
   // Scroll to bottom
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
-  useEffect(scrollToBottom, [messages]);
+
+  // Check if user is at bottom of chat
+  const checkIfAtBottom = () => {
+    if (!chatMessagesRef.current) return false;
+    const { scrollTop, scrollHeight, clientHeight } = chatMessagesRef.current;
+    const threshold = 100; // Allow 100px threshold for "at bottom"
+    return scrollHeight - scrollTop - clientHeight < threshold;
+  };
+
+  // Handle scroll events
+  const handleScroll = () => {
+    const atBottom = checkIfAtBottom();
+    setIsAtBottom(atBottom);
+    setShowScrollButton(!atBottom);
+    
+    // Clear existing timeout
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    
+    // Set user scrolling state
+    setIsUserScrolling(true);
+    
+    // Reset user scrolling state after 150ms of no scrolling
+    scrollTimeoutRef.current = setTimeout(() => {
+      setIsUserScrolling(false);
+    }, 150);
+  };
+
+  // Auto-scroll to bottom (only if user hasn't scrolled up)
+  const autoScrollToBottom = () => {
+    if (isAtBottom && !isUserScrolling) {
+      scrollToBottom();
+    }
+  };
+
+  // Manual scroll to bottom (when user clicks button)
+  const manualScrollToBottom = () => {
+    scrollToBottom();
+    setIsAtBottom(true);
+    setShowScrollButton(false);
+    setIsUserScrolling(false);
+  };
+
+  // Scroll effect - only auto-scroll if at bottom
+  useEffect(() => {
+    autoScrollToBottom();
+  }, [messages, isAtBottom, isUserScrolling]);
+
+  // Add scroll event listener
+  useEffect(() => {
+    const chatContainer = chatMessagesRef.current;
+    if (chatContainer) {
+      chatContainer.addEventListener('scroll', handleScroll);
+      return () => {
+        chatContainer.removeEventListener('scroll', handleScroll);
+      };
+    }
+  }, []);
+
+  // Cleanup scroll timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -413,7 +487,7 @@ const ContactPage = () => {
           <h2>{t('contactSupport')}</h2>
         </div>
 
-        <div className="chat-messages">
+        <div className="chat-messages" ref={chatMessagesRef}>
           {messages.map(message => (
             <div key={message.id} className={`message ${message.isUser ? 'user-message' : 'bot-message'}`}>
               <div className="message-content">
@@ -506,6 +580,17 @@ const ContactPage = () => {
           )}
           <div ref={messagesEndRef} />
         </div>
+
+        {/* Floating scroll to bottom button */}
+        {showScrollButton && (
+          <button
+            className="scroll-to-bottom-btn"
+            onClick={manualScrollToBottom}
+            title={t('scrollToBottom')}
+          >
+            ⬇️
+          </button>
+        )}
 
         {/* Input Area */}
         <form className="chat-input-form" onSubmit={handleSendMessage}>

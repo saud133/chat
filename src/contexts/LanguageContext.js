@@ -43,6 +43,7 @@ const translations = {
     likeMessage: 'Like message',
     dislikeMessage: 'Dislike message',
     shareMessage: 'Share message',
+    scrollToBottom: 'Scroll to bottom',
     
     // Login Page
     loginTitle: 'Welcome Back',
@@ -125,6 +126,7 @@ const translations = {
     likeMessage: 'إعجاب بالرسالة',
     dislikeMessage: 'عدم إعجاب بالرسالة',
     shareMessage: 'مشاركة الرسالة',
+    scrollToBottom: 'الانتقال للأسفل',
     
     // Login Page
     loginTitle: 'مرحباً بعودتك',
