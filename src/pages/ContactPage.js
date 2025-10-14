@@ -10,6 +10,7 @@ const ContactPage = () => {
   // Sidebar
   const sidebarRef = useRef(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
 
   // Conversations + Messages
   const [conversations, setConversations] = useState(() => {
@@ -135,6 +136,30 @@ const ContactPage = () => {
       }
     };
   }, []);
+
+  // Detect mobile on mount and handle resize
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        setIsSidebarOpen(false);
+      } else {
+        setIsSidebarOpen(true);
+      }
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Handle overlay click to close sidebar on mobile
+  const handleOverlayClick = () => {
+    if (isMobile) {
+      setIsSidebarOpen(false);
+    }
+  };
 
   // Auto-resize textarea
   useEffect(() => {
@@ -444,6 +469,14 @@ const ContactPage = () => {
 
   return (
     <div className={`contact-page ${isRTL ? 'rtl' : 'ltr'}`}>
+      {/* Mobile Overlay */}
+      {isMobile && (
+        <div 
+          className={`sidebar-overlay ${isSidebarOpen ? 'open' : ''}`}
+          onClick={handleOverlayClick}
+        />
+      )}
+      
       {/* Sidebar */}
       <div ref={sidebarRef} className={`chat-sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
         <div className="sidebar-header">
