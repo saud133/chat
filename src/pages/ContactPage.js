@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import './ContactPage.css';
 import { formatMessageText } from '../utils/textUtils';
+import { Copy, ThumbsUp, ThumbsDown, Share } from 'lucide-react';
 
 const ContactPage = () => {
   const { t, isRTL } = useLanguage();
@@ -174,6 +175,39 @@ const ContactPage = () => {
           )
         );
       }
+    }
+  };
+
+  // Message toolbar functions
+  const handleCopyMessage = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      // You could add a toast notification here
+      console.log('Message copied to clipboard');
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
+
+  const handleLikeMessage = (messageId) => {
+    console.log('Liked message:', messageId);
+    // You could implement like functionality here
+  };
+
+  const handleDislikeMessage = (messageId) => {
+    console.log('Disliked message:', messageId);
+    // You could implement dislike functionality here
+  };
+
+  const handleShareMessage = (text) => {
+    if (navigator.share) {
+      navigator.share({
+        title: 'Chat Message',
+        text: text,
+      }).catch(console.error);
+    } else {
+      // Fallback: copy to clipboard
+      handleCopyMessage(text);
     }
   };
 
@@ -422,6 +456,40 @@ const ContactPage = () => {
                         {action.label}
                       </button>
                     ))}
+                  </div>
+                )}
+
+                {/* Message toolbar for assistant messages only */}
+                {!message.isUser && message.text && (
+                  <div className="message-toolbar">
+                    <button
+                      className="toolbar-button"
+                      onClick={() => handleCopyMessage(message.text)}
+                      title="Copy message"
+                    >
+                      <Copy size={16} />
+                    </button>
+                    <button
+                      className="toolbar-button"
+                      onClick={() => handleLikeMessage(message.id)}
+                      title="Like message"
+                    >
+                      <ThumbsUp size={16} />
+                    </button>
+                    <button
+                      className="toolbar-button"
+                      onClick={() => handleDislikeMessage(message.id)}
+                      title="Dislike message"
+                    >
+                      <ThumbsDown size={16} />
+                    </button>
+                    <button
+                      className="toolbar-button"
+                      onClick={() => handleShareMessage(message.text)}
+                      title="Share message"
+                    >
+                      <Share size={16} />
+                    </button>
                   </div>
                 )}
 
