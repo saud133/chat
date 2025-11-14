@@ -7,8 +7,6 @@ import HomePage from './pages/HomePage';
 import ContactPage from './pages/ContactPage';
 import ChatPage from './pages/ChatPage';
 import ServicesPage from './pages/ServicesPage';
-import NewLoginPage from './pages/NewLoginPage';
-import NewRegisterPage from './pages/NewRegisterPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
 
@@ -23,8 +21,6 @@ function App() {
                 <HomePage />
               </Layout>
             } />
-            <Route path="/login" element={<NewLoginPage />} />
-            <Route path="/register" element={<NewRegisterPage />} />
             <Route path="/contact" element={
               <ProtectedRoute>
                 <Layout>
