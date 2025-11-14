@@ -7,7 +7,9 @@ import HomePage from './pages/HomePage';
 import ContactPage from './pages/ContactPage';
 import ChatPage from './pages/ChatPage';
 import ServicesPage from './pages/ServicesPage';
+import AdminDashboard from './pages/AdminDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
+import RouteTracker from './components/RouteTracker';
 import './App.css';
 
 function App() {
@@ -15,6 +17,7 @@ function App() {
     <LanguageProvider>
       <AuthProvider>
         <Router>
+          <RouteTracker />
           <Routes>
             <Route path="/" element={
               <Layout>
@@ -39,6 +42,13 @@ function App() {
               <Layout>
                 <ServicesPage />
               </Layout>
+            } />
+            <Route path="/admin" element={
+              <ProtectedRoute>
+                <Layout>
+                  <AdminDashboard />
+                </Layout>
+              </ProtectedRoute>
             } />
           </Routes>
         </Router>

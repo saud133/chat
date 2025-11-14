@@ -37,10 +37,46 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  const login = (userData) => {
-    setUser(userData);
-    localStorage.setItem('isLoggedIn', 'true');
-    localStorage.setItem('user', JSON.stringify(userData));
+  /**
+   * Login function that syncs user with backend database
+   * Calls /api/users/upsert to create or update user record
+   */
+  const login = async (userData) => {
+    try {
+      // Sync user with backend database
+      const response = await fetch('http://localhost:4000/api/users/upsert', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: userData.email,
+          name: userData.name,
+          isRegistered: true
+        })
+      });
+
+      if (response.ok) {
+        const backendUser = await response.json();
+        // Merge backend user data (includes id) with local user data
+        const mergedUser = { ...userData, id: backendUser.id };
+        setUser(mergedUser);
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('user', JSON.stringify(mergedUser));
+      } else {
+        // If backend sync fails, still allow local login
+        console.warn('Failed to sync user with backend, using local data');
+        setUser(userData);
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('user', JSON.stringify(userData));
+      }
+    } catch (error) {
+      // If backend is unavailable, still allow local login
+      console.warn('Backend unavailable, using local authentication:', error);
+      setUser(userData);
+      localStorage.setItem('isLoggedIn', 'true');
+      localStorage.setItem('user', JSON.stringify(userData));
+    }
   };
 
   const logout = () => {

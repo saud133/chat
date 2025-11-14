@@ -1,11 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 import { formatMessageText } from '../utils/textUtils';
+import { trackInteraction } from '../utils/sessionUtils';
 import './ChatPage.css';
 
 const ChatPage = () => {
   const { t, isRTL } = useLanguage();
+  const { user } = useAuth();
 
   // ✅ إنشاء أو استرجاع userId
   const getUserId = () => {
@@ -251,6 +254,9 @@ const ChatPage = () => {
       );
       setConversations(updatedConversations);
       localStorage.setItem('chatConversations', JSON.stringify(updatedConversations));
+
+      // Track interaction for analytics
+      trackInteraction(message, replyText, 'chat', user?.id || null);
 
     } catch (error) {
       console.error("❌ Fetch error:", error);

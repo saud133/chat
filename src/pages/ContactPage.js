@@ -1,11 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 import './ContactPage.css';
 import { formatMessageText } from '../utils/textUtils';
+import { trackInteraction } from '../utils/sessionUtils';
 import { Copy, ThumbsUp, ThumbsDown, Share } from 'lucide-react';
 
 const ContactPage = () => {
   const { t, isRTL } = useLanguage();
+  const { user } = useAuth();
 
   // Sidebar
   const sidebarRef = useRef(null);
@@ -438,6 +441,8 @@ const ContactPage = () => {
                 : c
             )
           );
+          // Track interaction for analytics
+          trackInteraction(inputValue, replyText, 'contact', user?.id || null);
         }
       }, typingSpeed);
 
