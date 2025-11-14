@@ -1,24 +1,27 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 import './LoginPage.css';
 
-const LoginPage = ({ onLogin }) => {
+const LoginPage = () => {
   const { t, isRTL } = useLanguage();
+  const { login } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     confirmPassword: '',
-    name: ''
+    name: '',
+    rememberMe: false
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     }));
     // Clear error when user starts typing
     if (errors[name]) {
@@ -84,7 +87,10 @@ const LoginPage = ({ onLogin }) => {
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('isLoggedIn', 'true');
       
-      onLogin(user);
+      login(user);
+      
+      // Reload page to update auth state
+      window.location.reload();
     } catch (error) {
       setErrors({ submit: t('loginError') || 'Login failed. Please try again.' });
     } finally {
@@ -109,7 +115,10 @@ const LoginPage = ({ onLogin }) => {
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('isLoggedIn', 'true');
       
-      onLogin(user);
+      login(user);
+      
+      // Reload page to update auth state
+      window.location.reload();
     } catch (error) {
       setErrors({ submit: t('googleLoginError') || 'Google login failed. Please try again.' });
     } finally {
@@ -134,7 +143,10 @@ const LoginPage = ({ onLogin }) => {
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('isLoggedIn', 'true');
       
-      onLogin(user);
+      login(user);
+      
+      // Reload page to update auth state
+      window.location.reload();
     } catch (error) {
       setErrors({ submit: t('microsoftLoginError') || 'Microsoft login failed. Please try again.' });
     } finally {
@@ -143,20 +155,23 @@ const LoginPage = ({ onLogin }) => {
   };
 
   return (
-    <div className={`login-page ${isRTL ? 'rtl' : 'ltr'}`}>
-      <div className="login-container">
-        <div className="login-header">
-          <h1>{t('loginTitle')}</h1>
-          <p>{t('loginSubtitle')}</p>
+    <div className={`auth-page ${isRTL ? 'rtl' : 'ltr'}`}>
+      <div className="auth-card">
+        <div className="auth-header">
+          <h1 className="auth-title">{isLogin ? t('signIn') : t('signUp')}</h1>
+          <p className="auth-subtitle">
+            {isLogin ? t('loginSubtitle') : (t('createAccount') || 'Create a new account to get started')}
+          </p>
         </div>
 
-        <div className="login-form-container">
+        <div className="auth-form-container">
           {/* Social Login Buttons */}
           <div className="social-login">
             <button 
               className="social-btn google-btn"
               onClick={handleGoogleLogin}
               disabled={isLoading}
+              type="button"
             >
               <svg className="social-icon" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -171,6 +186,7 @@ const LoginPage = ({ onLogin }) => {
               className="social-btn microsoft-btn"
               onClick={handleMicrosoftLogin}
               disabled={isLoading}
+              type="button"
             >
               <svg className="social-icon" viewBox="0 0 24 24">
                 <path fill="#f25022" d="M1 1h10v10H1z"/>
@@ -187,91 +203,116 @@ const LoginPage = ({ onLogin }) => {
           </div>
 
           {/* Email/Password Form */}
-          <form onSubmit={handleSubmit} className="login-form">
+          <form onSubmit={handleSubmit} className="auth-form">
+            {errors.submit && (
+              <div className="auth-error auth-error-box">
+                {errors.submit}
+              </div>
+            )}
+
             {!isLogin && (
-              <div className="form-group">
-                <label htmlFor="name">{t('name') || 'Name'}</label>
+              <div className="auth-input-group">
+                <label htmlFor="name" className="auth-label">{t('name') || 'Name'}</label>
                 <input
                   type="text"
                   id="name"
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
-                  className={errors.name ? 'error' : ''}
+                  className={`auth-input ${errors.name ? 'auth-input-error' : ''}`}
                   placeholder={t('enterName') || 'Enter your name'}
                 />
-                {errors.name && <span className="error-message">{errors.name}</span>}
+                {errors.name && <span className="auth-error">{errors.name}</span>}
               </div>
             )}
 
-            <div className="form-group">
-              <label htmlFor="email">{t('email')}</label>
+            <div className="auth-input-group">
+              <label htmlFor="email" className="auth-label">{t('email')}</label>
               <input
                 type="email"
                 id="email"
                 name="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                className={errors.email ? 'error' : ''}
+                className={`auth-input ${errors.email ? 'auth-input-error' : ''}`}
                 placeholder={t('enterEmail') || 'Enter your email'}
               />
-              {errors.email && <span className="error-message">{errors.email}</span>}
+              {errors.email && <span className="auth-error">{errors.email}</span>}
             </div>
 
-            <div className="form-group">
-              <label htmlFor="password">{t('password')}</label>
+            <div className="auth-input-group">
+              <label htmlFor="password" className="auth-label">{t('password')}</label>
               <input
                 type="password"
                 id="password"
                 name="password"
                 value={formData.password}
                 onChange={handleInputChange}
-                className={errors.password ? 'error' : ''}
+                className={`auth-input ${errors.password ? 'auth-input-error' : ''}`}
                 placeholder={t('enterPassword') || 'Enter your password'}
               />
-              {errors.password && <span className="error-message">{errors.password}</span>}
+              {errors.password && <span className="auth-error">{errors.password}</span>}
             </div>
 
             {!isLogin && (
-              <div className="form-group">
-                <label htmlFor="confirmPassword">{t('confirmPassword') || 'Confirm Password'}</label>
+              <div className="auth-input-group">
+                <label htmlFor="confirmPassword" className="auth-label">{t('confirmPassword') || 'Confirm Password'}</label>
                 <input
                   type="password"
                   id="confirmPassword"
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
-                  className={errors.confirmPassword ? 'error' : ''}
+                  className={`auth-input ${errors.confirmPassword ? 'auth-input-error' : ''}`}
                   placeholder={t('confirmPasswordPlaceholder') || 'Confirm your password'}
                 />
-                {errors.confirmPassword && <span className="error-message">{errors.confirmPassword}</span>}
+                {errors.confirmPassword && <span className="auth-error">{errors.confirmPassword}</span>}
               </div>
             )}
 
             {isLogin && (
-              <div className="form-options">
-                <a href="#" className="forgot-password">{t('forgotPassword')}</a>
+              <div className="auth-options">
+                <label className="auth-checkbox-label">
+                  <input
+                    type="checkbox"
+                    name="rememberMe"
+                    checked={formData.rememberMe}
+                    onChange={handleInputChange}
+                    className="auth-checkbox"
+                  />
+                  <span>{t('rememberMe') || 'Remember me'}</span>
+                </label>
+                <a href="#" className="auth-link">{t('forgotPassword')}</a>
               </div>
             )}
 
-            {errors.submit && <div className="error-message submit-error">{errors.submit}</div>}
-
             <button 
               type="submit" 
-              className="submit-btn"
+              className="auth-button"
               disabled={isLoading}
             >
-              {isLoading ? (t('loading') || 'Loading...') : (isLogin ? t('signIn') : t('signUp'))}
+              {isLoading ? (t('loading') || 'جاري الإرسال...') : (isLogin ? t('signIn') : t('signUp'))}
             </button>
           </form>
 
-          <div className="form-footer">
-            <p>
+          <div className="auth-footer">
+            <p className="auth-footer-text">
               {isLogin ? t('dontHaveAccount') : t('alreadyHaveAccount')}
+              {' '}
               <button 
                 type="button" 
-                className="toggle-form"
-                onClick={() => setIsLogin(!isLogin)}
+                className="auth-link-button"
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  setErrors({});
+                  setFormData({
+                    email: '',
+                    password: '',
+                    confirmPassword: '',
+                    name: '',
+                    rememberMe: false
+                  });
+                }}
               >
                 {isLogin ? t('signUp') : t('signIn')}
               </button>
