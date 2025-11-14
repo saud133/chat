@@ -1,16 +1,17 @@
+// src/pages/LoginPage.js
 import React, { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { Link } from 'react-router-dom';
 import './LoginPage.css';
 
 const LoginPage = ({ onLogin }) => {
   const { t, isRTL } = useLanguage();
-  const [isLogin, setIsLogin] = useState(true);
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    confirmPassword: '',
-    name: ''
   });
+
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
 
@@ -20,7 +21,6 @@ const LoginPage = ({ onLogin }) => {
       ...prev,
       [name]: value
     }));
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -44,18 +44,6 @@ const LoginPage = ({ onLogin }) => {
       newErrors.password = t('passwordMinLength') || 'Password must be at least 6 characters';
     }
     
-    if (!isLogin) {
-      if (!formData.name) {
-        newErrors.name = t('nameRequired') || 'Name is required';
-      }
-      
-      if (!formData.confirmPassword) {
-        newErrors.confirmPassword = t('confirmPasswordRequired') || 'Please confirm your password';
-      } else if (formData.password !== formData.confirmPassword) {
-        newErrors.confirmPassword = t('passwordsDoNotMatch') || 'Passwords do not match';
-      }
-    }
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -70,21 +58,20 @@ const LoginPage = ({ onLogin }) => {
     setIsLoading(true);
     
     try {
-      // Simulate API call
+      // هنا تضع استدعاء API الحقيقي لو حاب
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Create user session
       const user = {
         id: Date.now().toString(),
         email: formData.email,
-        name: formData.name || formData.email.split('@')[0],
+        name: formData.email.split('@')[0],
         loginMethod: 'email'
       };
       
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('isLoggedIn', 'true');
       
-      onLogin(user);
+      onLogin && onLogin(user);
     } catch (error) {
       setErrors({ submit: t('loginError') || 'Login failed. Please try again.' });
     } finally {
@@ -96,7 +83,6 @@ const LoginPage = ({ onLogin }) => {
     setIsLoading(true);
     
     try {
-      // Simulate Google OAuth
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       const user = {
@@ -109,7 +95,7 @@ const LoginPage = ({ onLogin }) => {
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('isLoggedIn', 'true');
       
-      onLogin(user);
+      onLogin && onLogin(user);
     } catch (error) {
       setErrors({ submit: t('googleLoginError') || 'Google login failed. Please try again.' });
     } finally {
@@ -121,7 +107,6 @@ const LoginPage = ({ onLogin }) => {
     setIsLoading(true);
     
     try {
-      // Simulate Microsoft OAuth
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       const user = {
@@ -134,7 +119,7 @@ const LoginPage = ({ onLogin }) => {
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('isLoggedIn', 'true');
       
-      onLogin(user);
+      onLogin && onLogin(user);
     } catch (error) {
       setErrors({ submit: t('microsoftLoginError') || 'Microsoft login failed. Please try again.' });
     } finally {
@@ -188,22 +173,6 @@ const LoginPage = ({ onLogin }) => {
 
           {/* Email/Password Form */}
           <form onSubmit={handleSubmit} className="login-form">
-            {!isLogin && (
-              <div className="form-group">
-                <label htmlFor="name">{t('name') || 'Name'}</label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  className={errors.name ? 'error' : ''}
-                  placeholder={t('enterName') || 'Enter your name'}
-                />
-                {errors.name && <span className="error-message">{errors.name}</span>}
-              </div>
-            )}
-
             <div className="form-group">
               <label htmlFor="email">{t('email')}</label>
               <input
@@ -232,27 +201,9 @@ const LoginPage = ({ onLogin }) => {
               {errors.password && <span className="error-message">{errors.password}</span>}
             </div>
 
-            {!isLogin && (
-              <div className="form-group">
-                <label htmlFor="confirmPassword">{t('confirmPassword') || 'Confirm Password'}</label>
-                <input
-                  type="password"
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  className={errors.confirmPassword ? 'error' : ''}
-                  placeholder={t('confirmPasswordPlaceholder') || 'Confirm your password'}
-                />
-                {errors.confirmPassword && <span className="error-message">{errors.confirmPassword}</span>}
-              </div>
-            )}
-
-            {isLogin && (
-              <div className="form-options">
-                <a href="#" className="forgot-password">{t('forgotPassword')}</a>
-              </div>
-            )}
+            <div className="form-options">
+              <a href="#" className="forgot-password">{t('forgotPassword')}</a>
+            </div>
 
             {errors.submit && <div className="error-message submit-error">{errors.submit}</div>}
 
@@ -261,20 +212,17 @@ const LoginPage = ({ onLogin }) => {
               className="submit-btn"
               disabled={isLoading}
             >
-              {isLoading ? (t('loading') || 'Loading...') : (isLogin ? t('signIn') : t('signUp'))}
+              {isLoading ? (t('loading') || 'Loading...') : t('signIn')}
             </button>
           </form>
 
           <div className="form-footer">
             <p>
-              {isLogin ? t('dontHaveAccount') : t('alreadyHaveAccount')}
-              <button 
-                type="button" 
-                className="toggle-form"
-                onClick={() => setIsLogin(!isLogin)}
-              >
-                {isLogin ? t('signUp') : t('signIn')}
-              </button>
+              {t('dontHaveAccount')}
+              {' '}
+              <Link to="/register" className="toggle-form">
+                {t('signUp')}
+              </Link>
             </p>
           </div>
         </div>
