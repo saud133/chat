@@ -1,6 +1,6 @@
 import React from 'react';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import LoginPage from '../pages/LoginPage';
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -12,10 +12,10 @@ const ProtectedRoute = ({ children }) => {
         justifyContent: 'center',
         alignItems: 'center',
         height: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+        background: '#f8fafc'
       }}>
         <div style={{
-          color: 'white',
+          color: '#64748b',
           fontSize: '1.2rem',
           fontWeight: '500'
         }}>
@@ -26,7 +26,7 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!isAuthenticated) {
-    return <LoginPage />;
+    return <Navigate to="/login" replace />;
   }
 
   return children;

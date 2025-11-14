@@ -1,23 +1,16 @@
-/**
- * @deprecated This component is deprecated. 
- * Please use NewLoginPage and NewRegisterPage instead.
- * This file is kept for backward compatibility but should not be used in new code.
- * Routes have been updated to use /login and /register with separate components.
- */
 import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
-import './LoginPage.css';
+import './AuthPage.css';
 
-const LoginPage = () => {
+const NewLoginPage = () => {
   const { t, isRTL } = useLanguage();
   const { login } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    confirmPassword: '',
-    name: '',
     rememberMe: false
   });
   const [errors, setErrors] = useState({});
@@ -53,18 +46,6 @@ const LoginPage = () => {
       newErrors.password = t('passwordMinLength') || 'Password must be at least 6 characters';
     }
     
-    if (!isLogin) {
-      if (!formData.name) {
-        newErrors.name = t('nameRequired') || 'Name is required';
-      }
-      
-      if (!formData.confirmPassword) {
-        newErrors.confirmPassword = t('confirmPasswordRequired') || 'Please confirm your password';
-      } else if (formData.password !== formData.confirmPassword) {
-        newErrors.confirmPassword = t('passwordsDoNotMatch') || 'Passwords do not match';
-      }
-    }
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -79,14 +60,14 @@ const LoginPage = () => {
     setIsLoading(true);
     
     try {
-      // Simulate API call
+      // Simulate API call - REPLACE THIS WITH YOUR ACTUAL API ENDPOINT
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Create user session
       const user = {
         id: Date.now().toString(),
         email: formData.email,
-        name: formData.name || formData.email.split('@')[0],
+        name: formData.email.split('@')[0],
         loginMethod: 'email'
       };
       
@@ -95,8 +76,8 @@ const LoginPage = () => {
       
       login(user);
       
-      // Reload page to update auth state
-      window.location.reload();
+      // Navigate to home or previous page
+      navigate('/', { replace: true });
     } catch (error) {
       setErrors({ submit: t('loginError') || 'Login failed. Please try again.' });
     } finally {
@@ -108,7 +89,7 @@ const LoginPage = () => {
     setIsLoading(true);
     
     try {
-      // Simulate Google OAuth
+      // Simulate Google OAuth - REPLACE THIS WITH YOUR ACTUAL API ENDPOINT
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       const user = {
@@ -123,8 +104,7 @@ const LoginPage = () => {
       
       login(user);
       
-      // Reload page to update auth state
-      window.location.reload();
+      navigate('/', { replace: true });
     } catch (error) {
       setErrors({ submit: t('googleLoginError') || 'Google login failed. Please try again.' });
     } finally {
@@ -136,7 +116,7 @@ const LoginPage = () => {
     setIsLoading(true);
     
     try {
-      // Simulate Microsoft OAuth
+      // Simulate Microsoft OAuth - REPLACE THIS WITH YOUR ACTUAL API ENDPOINT
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       const user = {
@@ -151,8 +131,7 @@ const LoginPage = () => {
       
       login(user);
       
-      // Reload page to update auth state
-      window.location.reload();
+      navigate('/', { replace: true });
     } catch (error) {
       setErrors({ submit: t('microsoftLoginError') || 'Microsoft login failed. Please try again.' });
     } finally {
@@ -164,10 +143,8 @@ const LoginPage = () => {
     <div className={`auth-page ${isRTL ? 'rtl' : 'ltr'}`}>
       <div className="auth-card">
         <div className="auth-header">
-          <h1 className="auth-title">{isLogin ? t('signIn') : t('signUp')}</h1>
-          <p className="auth-subtitle">
-            {isLogin ? t('loginSubtitle') : (t('createAccount') || 'Create a new account to get started')}
-          </p>
+          <h1 className="auth-title">{t('signIn')}</h1>
+          <p className="auth-subtitle">{t('loginSubtitle')}</p>
         </div>
 
         <div className="auth-form-container">
@@ -216,22 +193,6 @@ const LoginPage = () => {
               </div>
             )}
 
-            {!isLogin && (
-              <div className="auth-input-group">
-                <label htmlFor="name" className="auth-label">{t('name') || 'Name'}</label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  className={`auth-input ${errors.name ? 'auth-input-error' : ''}`}
-                  placeholder={t('enterName') || 'Enter your name'}
-                />
-                {errors.name && <span className="auth-error">{errors.name}</span>}
-              </div>
-            )}
-
             <div className="auth-input-group">
               <label htmlFor="email" className="auth-label">{t('email')}</label>
               <input
@@ -242,6 +203,7 @@ const LoginPage = () => {
                 onChange={handleInputChange}
                 className={`auth-input ${errors.email ? 'auth-input-error' : ''}`}
                 placeholder={t('enterEmail') || 'Enter your email'}
+                autoComplete="email"
               />
               {errors.email && <span className="auth-error">{errors.email}</span>}
             </div>
@@ -256,72 +218,41 @@ const LoginPage = () => {
                 onChange={handleInputChange}
                 className={`auth-input ${errors.password ? 'auth-input-error' : ''}`}
                 placeholder={t('enterPassword') || 'Enter your password'}
+                autoComplete="current-password"
               />
               {errors.password && <span className="auth-error">{errors.password}</span>}
             </div>
 
-            {!isLogin && (
-              <div className="auth-input-group">
-                <label htmlFor="confirmPassword" className="auth-label">{t('confirmPassword') || 'Confirm Password'}</label>
+            <div className="auth-options">
+              <label className="auth-checkbox-label">
                 <input
-                  type="password"
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
+                  type="checkbox"
+                  name="rememberMe"
+                  checked={formData.rememberMe}
                   onChange={handleInputChange}
-                  className={`auth-input ${errors.confirmPassword ? 'auth-input-error' : ''}`}
-                  placeholder={t('confirmPasswordPlaceholder') || 'Confirm your password'}
+                  className="auth-checkbox"
                 />
-                {errors.confirmPassword && <span className="auth-error">{errors.confirmPassword}</span>}
-              </div>
-            )}
-
-            {isLogin && (
-              <div className="auth-options">
-                <label className="auth-checkbox-label">
-                  <input
-                    type="checkbox"
-                    name="rememberMe"
-                    checked={formData.rememberMe}
-                    onChange={handleInputChange}
-                    className="auth-checkbox"
-                  />
-                  <span>{t('rememberMe') || 'Remember me'}</span>
-                </label>
-                <a href="#" className="auth-link">{t('forgotPassword')}</a>
-              </div>
-            )}
+                <span>{t('rememberMe') || 'Remember me'}</span>
+              </label>
+              <Link to="/forgot-password" className="auth-link">{t('forgotPassword')}</Link>
+            </div>
 
             <button 
               type="submit" 
               className="auth-button"
               disabled={isLoading}
             >
-              {isLoading ? (t('loading') || 'جاري الإرسال...') : (isLogin ? t('signIn') : t('signUp'))}
+              {isLoading ? (t('loading') || 'جاري الإرسال...') : t('signIn')}
             </button>
           </form>
 
           <div className="auth-footer">
             <p className="auth-footer-text">
-              {isLogin ? t('dontHaveAccount') : t('alreadyHaveAccount')}
+              {t('dontHaveAccount')}
               {' '}
-              <button 
-                type="button" 
-                className="auth-link-button"
-                onClick={() => {
-                  setIsLogin(!isLogin);
-                  setErrors({});
-                  setFormData({
-                    email: '',
-                    password: '',
-                    confirmPassword: '',
-                    name: '',
-                    rememberMe: false
-                  });
-                }}
-              >
-                {isLogin ? t('signUp') : t('signIn')}
-              </button>
+              <Link to="/register" className="auth-link-button">
+                {t('signUp')}
+              </Link>
             </p>
           </div>
         </div>
@@ -330,4 +261,5 @@ const LoginPage = () => {
   );
 };
 
-export default LoginPage;
+export default NewLoginPage;
+

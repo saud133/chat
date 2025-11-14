@@ -1,33 +1,27 @@
-/**
- * @deprecated This component is deprecated. 
- * Please use NewLoginPage and NewRegisterPage instead.
- * This file is kept for backward compatibility but should not be used in new code.
- * Routes have been updated to use /login and /register with separate components.
- */
 import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
-import './LoginPage.css';
+import './AuthPage.css';
 
-const LoginPage = () => {
+const NewRegisterPage = () => {
   const { t, isRTL } = useLanguage();
   const { login } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
+    name: '',
     email: '',
     password: '',
-    confirmPassword: '',
-    name: '',
-    rememberMe: false
+    confirmPassword: ''
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
 
   const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: value
     }));
     // Clear error when user starts typing
     if (errors[name]) {
@@ -41,6 +35,10 @@ const LoginPage = () => {
   const validateForm = () => {
     const newErrors = {};
     
+    if (!formData.name) {
+      newErrors.name = t('nameRequired') || 'Name is required';
+    }
+    
     if (!formData.email) {
       newErrors.email = t('emailRequired') || 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
@@ -53,16 +51,10 @@ const LoginPage = () => {
       newErrors.password = t('passwordMinLength') || 'Password must be at least 6 characters';
     }
     
-    if (!isLogin) {
-      if (!formData.name) {
-        newErrors.name = t('nameRequired') || 'Name is required';
-      }
-      
-      if (!formData.confirmPassword) {
-        newErrors.confirmPassword = t('confirmPasswordRequired') || 'Please confirm your password';
-      } else if (formData.password !== formData.confirmPassword) {
-        newErrors.confirmPassword = t('passwordsDoNotMatch') || 'Passwords do not match';
-      }
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = t('confirmPasswordRequired') || 'Please confirm your password';
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = t('passwordsDoNotMatch') || 'Passwords do not match';
     }
     
     setErrors(newErrors);
@@ -79,14 +71,14 @@ const LoginPage = () => {
     setIsLoading(true);
     
     try {
-      // Simulate API call
+      // Simulate API call - REPLACE THIS WITH YOUR ACTUAL API ENDPOINT
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Create user session
       const user = {
         id: Date.now().toString(),
         email: formData.email,
-        name: formData.name || formData.email.split('@')[0],
+        name: formData.name,
         loginMethod: 'email'
       };
       
@@ -95,10 +87,10 @@ const LoginPage = () => {
       
       login(user);
       
-      // Reload page to update auth state
-      window.location.reload();
+      // Navigate to home or previous page
+      navigate('/', { replace: true });
     } catch (error) {
-      setErrors({ submit: t('loginError') || 'Login failed. Please try again.' });
+      setErrors({ submit: t('loginError') || 'Registration failed. Please try again.' });
     } finally {
       setIsLoading(false);
     }
@@ -108,7 +100,7 @@ const LoginPage = () => {
     setIsLoading(true);
     
     try {
-      // Simulate Google OAuth
+      // Simulate Google OAuth - REPLACE THIS WITH YOUR ACTUAL API ENDPOINT
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       const user = {
@@ -123,10 +115,9 @@ const LoginPage = () => {
       
       login(user);
       
-      // Reload page to update auth state
-      window.location.reload();
+      navigate('/', { replace: true });
     } catch (error) {
-      setErrors({ submit: t('googleLoginError') || 'Google login failed. Please try again.' });
+      setErrors({ submit: t('googleLoginError') || 'Google registration failed. Please try again.' });
     } finally {
       setIsLoading(false);
     }
@@ -136,7 +127,7 @@ const LoginPage = () => {
     setIsLoading(true);
     
     try {
-      // Simulate Microsoft OAuth
+      // Simulate Microsoft OAuth - REPLACE THIS WITH YOUR ACTUAL API ENDPOINT
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       const user = {
@@ -151,10 +142,9 @@ const LoginPage = () => {
       
       login(user);
       
-      // Reload page to update auth state
-      window.location.reload();
+      navigate('/', { replace: true });
     } catch (error) {
-      setErrors({ submit: t('microsoftLoginError') || 'Microsoft login failed. Please try again.' });
+      setErrors({ submit: t('microsoftLoginError') || 'Microsoft registration failed. Please try again.' });
     } finally {
       setIsLoading(false);
     }
@@ -164,9 +154,9 @@ const LoginPage = () => {
     <div className={`auth-page ${isRTL ? 'rtl' : 'ltr'}`}>
       <div className="auth-card">
         <div className="auth-header">
-          <h1 className="auth-title">{isLogin ? t('signIn') : t('signUp')}</h1>
+          <h1 className="auth-title">{t('signUp')}</h1>
           <p className="auth-subtitle">
-            {isLogin ? t('loginSubtitle') : (t('createAccount') || 'Create a new account to get started')}
+            {t('createAccount') || 'Create a new account to get started'}
           </p>
         </div>
 
@@ -208,7 +198,7 @@ const LoginPage = () => {
             <span>{t('or') || 'or'}</span>
           </div>
 
-          {/* Email/Password Form */}
+          {/* Registration Form */}
           <form onSubmit={handleSubmit} className="auth-form">
             {errors.submit && (
               <div className="auth-error auth-error-box">
@@ -216,21 +206,20 @@ const LoginPage = () => {
               </div>
             )}
 
-            {!isLogin && (
-              <div className="auth-input-group">
-                <label htmlFor="name" className="auth-label">{t('name') || 'Name'}</label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  className={`auth-input ${errors.name ? 'auth-input-error' : ''}`}
-                  placeholder={t('enterName') || 'Enter your name'}
-                />
-                {errors.name && <span className="auth-error">{errors.name}</span>}
-              </div>
-            )}
+            <div className="auth-input-group">
+              <label htmlFor="name" className="auth-label">{t('name') || 'Name'}</label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                className={`auth-input ${errors.name ? 'auth-input-error' : ''}`}
+                placeholder={t('enterName') || 'Enter your name'}
+                autoComplete="name"
+              />
+              {errors.name && <span className="auth-error">{errors.name}</span>}
+            </div>
 
             <div className="auth-input-group">
               <label htmlFor="email" className="auth-label">{t('email')}</label>
@@ -242,6 +231,7 @@ const LoginPage = () => {
                 onChange={handleInputChange}
                 className={`auth-input ${errors.email ? 'auth-input-error' : ''}`}
                 placeholder={t('enterEmail') || 'Enter your email'}
+                autoComplete="email"
               />
               {errors.email && <span className="auth-error">{errors.email}</span>}
             </div>
@@ -256,72 +246,42 @@ const LoginPage = () => {
                 onChange={handleInputChange}
                 className={`auth-input ${errors.password ? 'auth-input-error' : ''}`}
                 placeholder={t('enterPassword') || 'Enter your password'}
+                autoComplete="new-password"
               />
               {errors.password && <span className="auth-error">{errors.password}</span>}
             </div>
 
-            {!isLogin && (
-              <div className="auth-input-group">
-                <label htmlFor="confirmPassword" className="auth-label">{t('confirmPassword') || 'Confirm Password'}</label>
-                <input
-                  type="password"
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  className={`auth-input ${errors.confirmPassword ? 'auth-input-error' : ''}`}
-                  placeholder={t('confirmPasswordPlaceholder') || 'Confirm your password'}
-                />
-                {errors.confirmPassword && <span className="auth-error">{errors.confirmPassword}</span>}
-              </div>
-            )}
-
-            {isLogin && (
-              <div className="auth-options">
-                <label className="auth-checkbox-label">
-                  <input
-                    type="checkbox"
-                    name="rememberMe"
-                    checked={formData.rememberMe}
-                    onChange={handleInputChange}
-                    className="auth-checkbox"
-                  />
-                  <span>{t('rememberMe') || 'Remember me'}</span>
-                </label>
-                <a href="#" className="auth-link">{t('forgotPassword')}</a>
-              </div>
-            )}
+            <div className="auth-input-group">
+              <label htmlFor="confirmPassword" className="auth-label">{t('confirmPassword') || 'Confirm Password'}</label>
+              <input
+                type="password"
+                id="confirmPassword"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleInputChange}
+                className={`auth-input ${errors.confirmPassword ? 'auth-input-error' : ''}`}
+                placeholder={t('confirmPasswordPlaceholder') || 'Confirm your password'}
+                autoComplete="new-password"
+              />
+              {errors.confirmPassword && <span className="auth-error">{errors.confirmPassword}</span>}
+            </div>
 
             <button 
               type="submit" 
               className="auth-button"
               disabled={isLoading}
             >
-              {isLoading ? (t('loading') || 'جاري الإرسال...') : (isLogin ? t('signIn') : t('signUp'))}
+              {isLoading ? (t('loading') || 'جاري الإرسال...') : t('signUp')}
             </button>
           </form>
 
           <div className="auth-footer">
             <p className="auth-footer-text">
-              {isLogin ? t('dontHaveAccount') : t('alreadyHaveAccount')}
+              {t('alreadyHaveAccount')}
               {' '}
-              <button 
-                type="button" 
-                className="auth-link-button"
-                onClick={() => {
-                  setIsLogin(!isLogin);
-                  setErrors({});
-                  setFormData({
-                    email: '',
-                    password: '',
-                    confirmPassword: '',
-                    name: '',
-                    rememberMe: false
-                  });
-                }}
-              >
-                {isLogin ? t('signUp') : t('signIn')}
-              </button>
+              <Link to="/login" className="auth-link-button">
+                {t('signIn')}
+              </Link>
             </p>
           </div>
         </div>
@@ -330,4 +290,5 @@ const LoginPage = () => {
   );
 };
 
-export default LoginPage;
+export default NewRegisterPage;
+
